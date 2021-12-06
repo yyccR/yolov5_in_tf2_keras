@@ -20,7 +20,7 @@ def main():
     epochs = 300
     log_dir = './logs'
     image_shape = (640, 640, 3)
-    num_class = 90
+    num_class = 91
     batch_size = 5
 
     # 这里anchor归一化到[0,1]区间
