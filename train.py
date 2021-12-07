@@ -15,13 +15,12 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 
 def main():
-
-    coco_data_file = "./data/instances_val2017.json"
     epochs = 300
     log_dir = './logs'
     image_shape = (640, 640, 3)
     num_class = 91
-    batch_size = 5
+    batch_size = 2
+    train_img_nums = 100
 
     # 这里anchor归一化到[0,1]区间
     anchors = np.array([[10, 13], [16, 30], [33, 23],
@@ -34,7 +33,8 @@ def main():
     summary_writer = tf.summary.create_file_writer(log_dir)
     # data generator
     coco_data = CoCoDataGenrator(
-        coco_annotation_file=coco_data_file,
+        coco_annotation_file='../../data/coco2017/annotations/instances_val2017.json',
+        train_img_nums=train_img_nums,
         img_shape=image_shape,
         batch_size=batch_size,
         max_instances=num_class,
@@ -79,10 +79,10 @@ def main():
                 gt_boxes = np.array(data['bboxes'] / image_shape[0], dtype=np.float32)
                 gt_classes = data['labels']
 
-                print("----------batch {}--------------".format(batch))
-                for i, nums in enumerate(valid_nums):
-                    print(gt_boxes[i,:nums,:])
-                    print(gt_classes[i,:nums])
+                # print("----------batch {}--------------".format(batch))
+                # for i, nums in enumerate(valid_nums):
+                #     print(gt_boxes[i,:nums,:])
+                #     print(gt_classes[i,:nums])
 
                 yolo_preds = yolov5(gt_imgs, training=True)
                 loss_xy, loss_wh, loss_box, loss_obj, loss_cls = loss_fn(yolo_preds, gt_boxes, gt_classes)
@@ -90,6 +90,8 @@ def main():
                 total_loss = loss_box + loss_obj + loss_cls
                 grad = tape.gradient(total_loss, yolov5.trainable_variables)
                 optimizer.apply_gradients(zip(grad, yolov5.trainable_variables))
+                print("-------epoch {}---batch {}--------------".format(epoch, batch))
+                print("loss_box:{}, loss_obj:{}, loss_cls:{}".format(loss_box, loss_obj, loss_cls))
 
                 # Scalar
                 with summary_writer.as_default():
@@ -131,7 +133,7 @@ def main():
                                 pred_img = draw_bounding_box(pred_img, class_name, box_obj_cls[4], int(xmin), int(ymin),
                                                              int(xmax), int(ymax))
 
-                concat_imgs = tf.concat([gt_img[:, :, :], pred_img[:, :, :]], axis=1)
+                concat_imgs = tf.concat([gt_img[:, :, ::-1], pred_img[:, :, ::-1]], axis=1)
                 summ_imgs = tf.expand_dims(concat_imgs, 0)
                 summ_imgs = tf.cast(summ_imgs, dtype=tf.uint8)
                 with summary_writer.as_default():

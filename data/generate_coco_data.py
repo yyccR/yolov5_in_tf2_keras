@@ -3,6 +3,7 @@ import sys
 sys.path.append("../../yolov5_in_tf2_keras")
 
 import cv2
+import os
 from pycocotools.coco import COCO
 import numpy as np
 import skimage.io as io
@@ -11,17 +12,29 @@ import skimage.io as io
 class CoCoDataGenrator:
     def __init__(self,
                  coco_annotation_file,
+                 train_img_nums=-1,
                  img_shape=(640, 640, 3),
                  batch_size=1,
                  max_instances=100,
                  include_crowd=False,
                  include_mask=False,
-                 include_keypoint=False):
+                 include_keypoint=False,
+                 download_image_path=os.path.dirname(os.path.abspath(__file__)) + "/" + './coco_2017_val_images/',
+                 ):
+        # 设置要训练的图片数, -1表示全部
+        self.train_img_nums = train_img_nums
+        # 设置下载保存coco json文件中图片的目录
+        self.download_image_path = download_image_path
+        # 图片最终resize+padding后的大小
         self.img_shape = img_shape
         self.batch_size = batch_size
+        # 此参数为保证不同size的box,mask能padding到一个batch里
         self.max_instances = max_instances
+        # 是否输出包含crowd类型数据
         self.include_crowd = include_crowd
+        # 是否输出包含mask分割数据
         self.include_mask = include_mask
+        # 是否输出包含keypoint数据
         self.include_keypoint = include_keypoint
 
         self.current_batch_index = 0
@@ -29,6 +42,7 @@ class CoCoDataGenrator:
         self.img_ids = []
         self.coco = COCO(annotation_file=coco_annotation_file)
         self.load_data()
+        self.download_image_files()
 
     def load_data(self):
         # 初步过滤数据是否包含crowd
@@ -39,8 +53,32 @@ class CoCoDataGenrator:
                 annos = list(filter(lambda x: x['iscrowd'] == self.include_crowd, annos))
                 if annos:
                     target_img_ids.append(k)
+
+        if self.train_img_nums > 0:
+            np.random.shuffle(target_img_ids)
+            target_img_ids = target_img_ids[:self.train_img_nums]
+
         self.total_batch_size = len(target_img_ids) // self.batch_size
         self.img_ids = target_img_ids
+
+    def download_image_files(self):
+        """下载coco图片数据"""
+        if not os.path.exists(self.download_image_path):
+            os.makedirs(self.download_image_path)
+
+        if len(os.listdir(self.download_image_path)) > 0:
+            print("image files already downloaded! size: {}".format(len(os.listdir(self.download_image_path))))
+            return
+
+        for i, img_id in enumerate(self.img_ids):
+            file_path = self.download_image_path + "./{}.jpg".format(img_id)
+            try:
+                im = io.imread(self.coco.imgs[img_id]['coco_url'])
+                io.imsave(file_path, im)
+                print("save image {}, {}/{}".format(file_path, i, len(self.img_ids)))
+            except Exception as e:
+                print(e)
+                print(img_id, file_path)
 
     def next_batch(self):
         if self.current_batch_index >= self.total_batch_size:
@@ -203,7 +241,7 @@ class CoCoDataGenrator:
             "bboxes": [],
             "masks": [],
             "keypoints": [],
-            "valid_nums":0
+            "valid_nums": 0
         }
 
         valid_nums = 0
@@ -241,7 +279,9 @@ class CoCoDataGenrator:
             keypoints = np.array(keypoints, dtype=np.int8)
             outputs['keypoints'] = keypoints
 
-        img = io.imread(self.coco.imgs[image_id]['coco_url'])
+        # img = io.imread(self.coco.imgs[image_id]['coco_url'])
+        img_file = self.download_image_path + "./{}.jpg".format(image_id)
+        img = cv2.imread(img_file)
         if len(np.shape(img)) < 2:
             return outputs
         elif len(np.shape(img)) == 2:
@@ -258,6 +298,7 @@ class CoCoDataGenrator:
         outputs['valid_nums'] = valid_nums
 
         return outputs
+
 
 
 if __name__ == "__main__":

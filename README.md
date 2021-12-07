@@ -9,7 +9,9 @@
 
 ### Requirements
 
-`pip3 install -r requirements.txt`
+```python
+pip3 install -r requirements.txt
+```
 
 ### Get start
 
