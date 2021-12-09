@@ -4,7 +4,7 @@
 
 - COCO2017
   
-<img src="https://raw.githubusercontent.com/yyccR/Pictures/master/yolov5/yolov5_train.png" width="2050" height="1134"/> 
+<img src="https://raw.githubusercontent.com/yyccR/Pictures/master/yolov5/yolov5_train.png" width="1000" height="500"/> 
 
 - 精度/召回率
 
