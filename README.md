@@ -3,7 +3,8 @@
 ### 测试效果
 
 - COCO2017
-
+  
+<img src="https://raw.githubusercontent.com/yyccR/Pictures/master/yolov5/yolov5_train.png" width="500" height="430"/> 
 
 - 精度/召回率
 

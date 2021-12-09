@@ -19,8 +19,9 @@ def main():
     log_dir = './logs'
     image_shape = (640, 640, 3)
     num_class = 91
-    batch_size = 2
-    train_img_nums = 100
+    batch_size = 3
+    # <0表示全部数据参与训练
+    train_img_nums = -1
 
     # 这里anchor归一化到[0,1]区间
     anchors = np.array([[10, 13], [16, 30], [33, 23],
@@ -54,7 +55,7 @@ def main():
     )
     yolov5 = yolo.yolov5
     yolov5.summary(line_length=200)
-    optimizer = tf.keras.optimizers.Adam(learning_rate=0.001)
+    optimizer = tf.keras.optimizers.Adam(learning_rate=0.0001)
 
     loss_fn = ComputeLoss(
         image_shape=image_shape,
@@ -79,7 +80,7 @@ def main():
                 gt_boxes = np.array(data['bboxes'] / image_shape[0], dtype=np.float32)
                 gt_classes = data['labels']
 
-                # print("----------batch {}--------------".format(batch))
+                print("-------step {}--------".format(epoch * coco_data.total_batch_size + batch))
                 # for i, nums in enumerate(valid_nums):
                 #     print(gt_boxes[i,:nums,:])
                 #     print(gt_classes[i,:nums])
@@ -90,8 +91,8 @@ def main():
                 total_loss = loss_box + loss_obj + loss_cls
                 grad = tape.gradient(total_loss, yolov5.trainable_variables)
                 optimizer.apply_gradients(zip(grad, yolov5.trainable_variables))
-                print("-------epoch {}---batch {}--------------".format(epoch, batch))
-                print("loss_box:{}, loss_obj:{}, loss_cls:{}".format(loss_box, loss_obj, loss_cls))
+                # print("-------epoch {}---batch {}--------------".format(epoch, batch))
+                # print("loss_box:{}, loss_obj:{}, loss_cls:{}".format(loss_box, loss_obj, loss_cls))
 
                 # Scalar
                 with summary_writer.as_default():

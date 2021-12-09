@@ -92,17 +92,23 @@ def bbox_iou(box1, box2, x1y1x2y2=True, GIoU=False, DIoU=False, CIoU=False, eps=
 
 class ComputeLoss:
     """yolov5损失计算"""
+
     def __init__(self, image_shape, anchors, anchor_masks, num_class,
+                 box_loss_gain=0.05, class_loss_gain=0.5, obj_loss_gain=1.0,
                  anchor_ratio_thres=4, only_best_anchor=True, balanced_rate=20,
-                 iou_ignore_thres=0.5):
+                 iou_ignore_thres=0.5, layer_balance=[4., 1.0, 0.4]):
         self.image_shape = image_shape
         self.anchors = anchors
         self.anchor_masks = anchor_masks
         self.num_class = num_class
+        self.box_loss_gain = box_loss_gain
+        self.class_loss_gain = class_loss_gain
+        self.obj_loss_gain = obj_loss_gain
         self.anchor_ratio_thres = anchor_ratio_thres
         self.only_best_anchor = only_best_anchor
         self.balanced_rate = balanced_rate
         self.iou_ignore_thres = iou_ignore_thres
+        self.layer_balance = layer_balance
 
     def _transform_expand_target(self, gt_box_class_anchor, grid_size):
         # y_true: [batch, boxes, (x1, y1, x2, y2, class, best_anchor)]
@@ -244,6 +250,7 @@ class ComputeLoss:
         targets = self.build_targets(predicts, gt_boxes, gt_classes)
 
         for i, predict in enumerate(predicts):
+            batch = predict.shape[0]
             grid_size = predict.shape[1]
 
             # ----------------- 这里处理预测数据 --------------------------
@@ -349,14 +356,16 @@ class ComputeLoss:
             class_loss = obj_mask * tf.keras.losses.sparse_categorical_crossentropy(true_cls, pred_cls)
 
             # 6. sum over (batch, gridx, gridy, anchors) => (batch, 1)
-            loss_xy += tf.reduce_sum(xy_loss)
-            loss_wh += tf.reduce_sum(wh_loss)
-            loss_box += tf.reduce_sum(box_loss)
-            loss_obj += tf.reduce_sum(obj_loss)
-            loss_cls += tf.reduce_sum(class_loss)
+            loss_xy += tf.reduce_mean(xy_loss) * batch
+            loss_wh += tf.reduce_mean(wh_loss) * batch
+            if tf.size(iou) > 0:
+                loss_box += tf.reduce_mean(box_loss) * batch * self.box_loss_gain
+            loss_obj += tf.reduce_mean(obj_loss) * self.layer_balance[i] * batch * self.obj_loss_gain
+            loss_cls += tf.reduce_mean(class_loss) * batch * self.class_loss_gain
 
         # return xy_loss + wh_loss + obj_loss + class_loss
         return loss_xy, loss_wh, loss_box, loss_obj, loss_cls
+        # return loss_xy, loss_wh, loss_xy+loss_wh, loss_obj, loss_cls
 
 
 if __name__ == "__main__":
