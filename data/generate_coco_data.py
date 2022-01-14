@@ -1,9 +1,10 @@
 import sys
 
-sys.path.append("../../yolov5_in_tf2_keras")
+sys.path.append("../../detector_in_keras")
 
-import cv2
 import os
+import cv2
+import random
 from pycocotools.coco import COCO
 import numpy as np
 import skimage.io as io
@@ -68,7 +69,6 @@ class CoCoDataGenrator:
 
         if len(os.listdir(self.download_image_path)) > 0:
             print("image files already downloaded! size: {}".format(len(os.listdir(self.download_image_path))))
-            return
 
         for i, img_id in enumerate(self.img_ids):
             file_path = self.download_image_path + "./{}.jpg".format(img_id)
@@ -281,6 +281,12 @@ class CoCoDataGenrator:
 
         # img = io.imread(self.coco.imgs[image_id]['coco_url'])
         img_file = self.download_image_path + "./{}.jpg".format(image_id)
+        if not os.path.isfile(img_file):
+            file_path = self.download_image_path + "./{}.jpg".format(image_id)
+            print("download image from {}".format(self.coco.imgs[image_id]['coco_url']))
+            im = io.imread(self.coco.imgs[image_id]['coco_url'])
+            io.imsave(file_path, im)
+            print("save image {}".format(file_path))
         img = cv2.imread(img_file)
         if len(np.shape(img)) < 2:
             return outputs
@@ -300,12 +306,23 @@ class CoCoDataGenrator:
         return outputs
 
 
-
 if __name__ == "__main__":
     from data.visual_ops import draw_bounding_box, draw_instance
 
     file = "./coco2017/annotations/instances_val2017.json"
-    coco = CoCoDataGenrator(coco_annotation_file=file, include_mask=True, include_keypoint=False, batch_size=5)
+    coco = CoCoDataGenrator(
+        coco_annotation_file=file,
+        train_img_nums=20,
+        include_mask=True,
+        include_keypoint=False,
+        batch_size=2)
+    # print(coco.total_batch_size)
+
+    # for i in coco.img_ids[:2]:
+    #     im = io.imread(coco.coco.imgs[i]['coco_url'])
+    #     io.imsave("./tmp/test{}.jpg".format(i), im)
+    # cv2.imwrite("./tmp/test{}.jpg".format(i),im)
+    # cv2.waitKey(0)
     data = coco.next_batch()
     gt_imgs = data['imgs']
     gt_boxes = data['bboxes']
