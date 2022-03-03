@@ -1,5 +1,9 @@
 ## YOLOv5 in tesnorflow2.x-keras
 
+- [yolov5数据增强jupyter示例](./data/arguments_jupyter.ipynb)
+- [Bilibili视频讲解地址: 《yolov5 解读,训练,复现》](https://www.bilibili.com/video/BV1JR4y1g77H/)
+- [Bilibili视频讲解PPT文件: yolov5_bilibili_talk_ppt.pdf](./yolov5_bilibili_talk_ppt.pdf)
+
 ### 模型测试
 
 - 训练 COCO2017(val 5k)
