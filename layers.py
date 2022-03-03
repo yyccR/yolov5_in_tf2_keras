@@ -125,10 +125,10 @@ class TransformerLayer(tf.keras.layers.Layer):
         self.fc2 = tf.keras.layers.Dense(c, use_bias=False)
 
     def call(self, inputs, *args, **kwargs):
-        x = self.multiheadAttention(self.q(inputs), self.v(inputs), self.k(inputs)) + inputs
-        x = self.fc1(x)
+        y = self.multiheadAttention(self.q(inputs), self.v(inputs), self.k(inputs)) + inputs
+        x = self.fc1(y)
         x = self.fc2(x)
-        x = x + inputs
+        x = x + y
         return x
 
 
