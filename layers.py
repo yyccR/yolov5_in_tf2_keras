@@ -203,7 +203,8 @@ class Bottleneck(tf.keras.layers.Layer):
         self.conv2 = Conv(out_channels=out_channels, kernel_size=3, stride=1, groups=groups)
 
     def call(self, inputs, *args, **kwargs):
-        in_shape = tf.shape(inputs)
+        # in_shape = tf.shape(inputs)
+        in_shape = inputs.get_shape()
         if self.shortcut and in_shape[-1] == self.out_channels:
             return inputs + self.conv2(self.conv1(inputs))
         else:
@@ -334,7 +335,7 @@ class C3Ghost(C3):
         super(C3Ghost, self).__init__(out_channels, num_bottles, shortcut, groups, expansion)
         out_expansion_channels = int(out_channels * expansion)
         self.bottlenecks = tf.keras.Sequential([
-            GhostBottleneck(in_channels=out_expansion_channels,out_channels=out_expansion_channels)
+            GhostBottleneck(in_channels=out_expansion_channels, out_channels=out_expansion_channels)
             for _ in range(num_bottles)
         ])
 
@@ -469,6 +470,7 @@ class SPPF(tf.keras.layers.Layer):
         output = self.conv2(concat_all)
         return output
 
+
 # class Focus(nn.Module):
 #     # Focus wh information into c-space
 #     def __init__(self, c1, c2, k=1, s=1, p=None, g=1, act=True):  # ch_in, ch_out, kernel, stride, padding, groups
@@ -489,10 +491,11 @@ class Focus(tf.keras.layers.Layer):
     def call(self, inputs, *args, **kwargs):
         # [batch, h, w, c] => [batch, h/2, w/2, c]
         half_wh_concat = tf.keras.layers.Concatenate()(
-            [inputs[:,::2,::2,:], inputs[:,1::2,::2,:], inputs[:,::2,1::2,:], inputs[:,1::2,1::2,:]]
+            [inputs[:, ::2, ::2, :], inputs[:, 1::2, ::2, :], inputs[:, ::2, 1::2, :], inputs[:, 1::2, 1::2, :]]
         )
         output = self.conv(half_wh_concat)
         return output
+
 
 #
 # class Contract(nn.Module):
@@ -579,7 +582,6 @@ class Concat(tf.keras.layers.Layer):
 
     def call(self, inputs, *args, **kwargs):
         return tf.keras.layers.Concatenate(axis=self.dimension)(inputs)
-
 
 # class AutoShape(nn.Module):
 #     # YOLOv5 input-robust model wrapper for passing cv2/np/PIL/torch inputs. Includes preprocessing, inference and NMS

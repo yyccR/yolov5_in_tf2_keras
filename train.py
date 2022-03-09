@@ -20,8 +20,8 @@ def main():
     image_shape = (640, 640, 3)
     num_class = 91
     batch_size = 3
-    # <0表示全部数据参与训练
-    train_img_nums = -1
+    # -1表示全部数据参与训练
+    train_img_nums = 5
 
     # 这里anchor归一化到[0,1]区间
     anchors = np.array([[10, 13], [16, 30], [33, 23],
@@ -34,7 +34,7 @@ def main():
     summary_writer = tf.summary.create_file_writer(log_dir)
     # data generator
     coco_data = CoCoDataGenrator(
-        coco_annotation_file='../../data/coco2017/annotations/instances_val2017.json',
+        coco_annotation_file='./data/instances_val2017.json',
         train_img_nums=train_img_nums,
         img_shape=image_shape,
         batch_size=batch_size,
@@ -70,8 +70,10 @@ def main():
 
     # data = coco_data.next_batch()
     for epoch in range(epochs):
-        if epoch % 20 == 0 and epoch != 0:
+        if epoch % 1 == 0 and epoch != 0:
             yolov5.save_weights(log_dir + '/yolov5-tf-{}.h5'.format(epoch))
+            # 保存为pb格式
+            # yolov5.save(log_dir + '/yolov5-tf-{}.pb'.format(epoch), save_format='tf')
         for batch in range(coco_data.total_batch_size):
             with tf.GradientTape() as tape:
                 data = coco_data.next_batch()
