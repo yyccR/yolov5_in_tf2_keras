@@ -37,6 +37,7 @@ class CoCoDataGenrator:
         self.include_mask = include_mask
         # 是否输出包含keypoint数据
         self.include_keypoint = include_keypoint
+        self.coco_annotation_file = coco_annotation_file
 
         self.current_batch_index = 0
         self.total_batch_size = 0
@@ -280,19 +281,49 @@ class CoCoDataGenrator:
             outputs['keypoints'] = keypoints
 
         # img = io.imread(self.coco.imgs[image_id]['coco_url'])
-        img_file = self.download_image_path + "./{}.jpg".format(image_id)
-        if not os.path.isfile(img_file):
-            file_path = self.download_image_path + "./{}.jpg".format(image_id)
-            print("download image from {}".format(self.coco.imgs[image_id]['coco_url']))
-            im = io.imread(self.coco.imgs[image_id]['coco_url'])
-            io.imsave(file_path, im)
-            print("save image {}".format(file_path))
-        img = cv2.imread(img_file)
+        # img_file = self.download_image_path + "./{}.jpg".format(image_id)
+        # if not os.path.isfile(img_file):
+        #     file_path = self.download_image_path + "./{}.jpg".format(image_id)
+        #     print("download image from {}".format(self.coco.imgs[image_id]['coco_url']))
+        #     im = io.imread(self.coco.imgs[image_id]['coco_url'])
+        #     io.imsave(file_path, im)
+        #     print("save image {}".format(file_path))
+        # img = cv2.imread(img_file)
+
+        img_coco_url_file = str(self.coco.imgs[image_id].get('coco_url',""))
+        img_url_file = str(self.coco.imgs[image_id].get('url',""))
+        img_local_file = str(self.coco.imgs[image_id].get('file_name',""))
+        img_local_file = os.path.join(os.path.dirname(self.coco_annotation_file), img_local_file)
+        img = []
+
+        if os.path.isfile(img_local_file):
+            img = io.imread(img_local_file)
+        elif img_coco_url_file.startswith("http"):
+            download_image_file = self.download_image_path + "./{}.jpg".format(image_id)
+            if not os.path.isfile(download_image_file):
+                print("download image from {}".format(img_coco_url_file))
+                im = io.imread(img_coco_url_file)
+                io.imsave(download_image_file, im)
+                print("save image {}".format(download_image_file))
+            img = io.imread(download_image_file)
+        elif img_url_file.startswith("http"):
+            download_image_file = self.download_image_path + "./{}.jpg".format(image_id)
+            if not os.path.isfile(download_image_file):
+                print("download image from {}".format(img_url_file))
+                im = io.imread(img_url_file)
+                io.imsave(download_image_file, im)
+                print("save image {}".format(download_image_file))
+            img = io.imread(download_image_file)
+        else:
+            return outputs
+
         if len(np.shape(img)) < 2:
             return outputs
         elif len(np.shape(img)) == 2:
             img = np.expand_dims(img, axis=-1)
             img = np.pad(img, [(0, 0), (0, 0), (0, 2)])
+        else:
+            img = img[:, :, ::-1]
 
         labels = np.array(labels, dtype=np.int8)
         bboxes = np.array(bboxes, dtype=np.int16)
@@ -309,13 +340,13 @@ class CoCoDataGenrator:
 if __name__ == "__main__":
     from data.visual_ops import draw_bounding_box, draw_instance
 
-    file = "./coco2017/annotations/instances_val2017.json"
+    file = "./instances_val2017.json"
     coco = CoCoDataGenrator(
         coco_annotation_file=file,
-        train_img_nums=20,
+        train_img_nums=1,
         include_mask=True,
         include_keypoint=False,
-        batch_size=2)
+        batch_size=1)
     # print(coco.total_batch_size)
 
     # for i in coco.img_ids[:2]:
@@ -343,8 +374,8 @@ if __name__ == "__main__":
 
     # data = coco.next_batch()
     # print(data)
-    # for i in coco.coco.cats:
-    #     print(coco.coco.cats[i])
+    for i in coco.coco.cats:
+        print(coco.coco.cats[i])
     # class_names = list(map(lambda x:x['name'],coco.coco.cats))
 
     # coco = COCO(annotation_file=file)

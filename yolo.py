@@ -201,7 +201,7 @@ class Yolo:
             im_blob = np.zeros(self.image_shape, dtype=np.float32)
             im_blob[0:im_resize_shape[0], 0:im_resize_shape[1], :] = im_resize
             inputs = np.array([im_blob], dtype=np.float32)
-            nms_bboxes, nms_scores, nms_classes, valid_detection_nums = self.yolo_model.predict(inputs)
+            nms_bboxes, nms_scores, nms_classes, valid_detection_nums = self.yolov5.predict(inputs)
 
             batch_bboxes.append(nms_bboxes[0] * self.image_shape[0] / im_scale)
             batch_scores.append(nms_scores[0])
