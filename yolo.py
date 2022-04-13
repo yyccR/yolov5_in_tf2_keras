@@ -7,6 +7,9 @@ import numpy as np
 import cv2
 import tensorflow as tf
 from yolov5l import Yolov5l
+from yolov5x import Yolov5x
+from yolov5m import Yolov5m
+from yolov5s import Yolov5s
 from data.generate_coco_data import CoCoDataGenrator
 from data.visual_ops import draw_bounding_box
 
@@ -26,8 +29,8 @@ class Yolo:
                  strides=[8, 16, 32],
                  anchors_per_location=3,
                  yolo_max_boxes=100,
-                 yolo_iou_threshold=0.5,
-                 yolo_score_threshold=0.5,
+                 yolo_iou_threshold=0.3,
+                 yolo_conf_threshold=0.5,
                  model_path=None):
         self.image_shape = image_shape
         self.is_training = is_training
@@ -37,7 +40,7 @@ class Yolo:
         self.anchors_per_location = anchors_per_location
         self.yolo_max_boxes = yolo_max_boxes
         self.yolo_iou_threshold = yolo_iou_threshold
-        self.yolo_score_threshold = yolo_score_threshold
+        self.yolo_conf_threshold = yolo_conf_threshold
 
         self.num_class = num_class
         self.anchors = anchors
@@ -51,11 +54,28 @@ class Yolo:
                 anchors_per_location=self.anchors_per_location
             ).build_graph()
         elif self.net_type == '5s':
-            pass
+            self.base_net = Yolov5s(
+                image_shape=self.image_shape,
+                batch_size=self.batch_size,
+                num_class=self.num_class,
+                anchors_per_location=self.anchors_per_location
+            ).build_graph()
+        elif self.net_type == '5m':
+            self.base_net = Yolov5m(
+                image_shape=self.image_shape,
+                batch_size=self.batch_size,
+                num_class=self.num_class,
+                anchors_per_location=self.anchors_per_location
+            ).build_graph()
         elif self.net_type == '5x':
-            pass
+            self.base_net = Yolov5x(
+                image_shape=self.image_shape,
+                batch_size=self.batch_size,
+                num_class=self.num_class,
+                anchors_per_location=self.anchors_per_location
+            ).build_graph()
         else:
-            pass
+            assert self.net_type in ['5l', '5s', '5m', '5x'], "Net type not in {}".format(['5l', '5s', '5m', '5x'])
 
         self.grid = []
         self.anchor_grid = []
@@ -68,7 +88,8 @@ class Yolo:
     def yolo_head(self, features, is_training):
         """ yolo最后输出层
         :param features:
-        :return:[[batch, h, w, num_anchors_per_layer, num_class + 5], [...], [...]]
+        :return: train mode: [[batch, h, w, num_anchors_per_layer, num_class + 5], [...], [...]]
+                 infer mode: [batch, -1, num_class + 5]
         """
         # num_anchors_per_layer = len(self.anchors[0])
         detect_res = []
@@ -117,7 +138,7 @@ class Yolo:
         :param conf_thres:
         :param iou_thres:
         :param max_det:
-        :return:
+        :return: [batch, nms_nums, (x1, y1, x2, y2, conf, cls)]
         """
         output = []
 
@@ -162,12 +183,14 @@ class Yolo:
 
             output.append(predict[nms_ids.numpy()])
 
-        return output
+        return np.array(output)
 
     def build_graph(self, is_training):
         inputs = tf.keras.layers.Input(shape=self.image_shape, batch_size=self.batch_size)
         yolo_body_outputs = self.base_net(inputs)
         outputs = self.yolo_head(yolo_body_outputs, is_training=is_training)
+        if not self.is_training:
+            outputs = yolo.nms(outputs, iou_thres=self.yolo_iou_threshold, conf_thres=self.yolo_conf_threshold)
         model = tf.keras.models.Model(inputs=inputs, outputs=outputs)
         return model
 
@@ -175,24 +198,17 @@ class Yolo:
         """预测, bulid_graph里面已经处理好nms, 只需要*对应的image size就行,
            预测模式下实例化类: is_training=False, weights_path=, batch_size跟随输入建议1, image_shape跟随训练模式,不做调整
         :param images: [batch, h, w, c] or [h, w, c]
-        :return batch_bboxes: [batch, num_val_nums, (x1, y1, x2, y2)]
-                batch_scores: [batch_size, nms_nums]
-                batch_classes: [batch_size, nms_nums]
-                batch_val_nums: [batch_size, 1]
+        :return [[nms_nums, (x1, y1, x2, y2, conf, cls)], [...], [...], ...]
         """
 
-        im_shapes = np.shape(images)
-        if len(im_shapes) <= 3:
+        if len(images) <= 3:
             images = [images]
             self.batch_size = 1
 
-        batch_bboxes = []
-        batch_scores = []
-        batch_classes = []
-        batch_val_nums = []
-
+        outputs = []
         for i, im in enumerate(images):
-            im_size_max = np.max(im_shapes[i][0:2])
+            im_shape = np.shape(im)
+            im_size_max = np.max(im_shape[i][0:2])
             im_scale = float(self.image_shape[0]) / float(im_size_max)
 
             # resize原始图片
@@ -201,14 +217,23 @@ class Yolo:
             im_blob = np.zeros(self.image_shape, dtype=np.float32)
             im_blob[0:im_resize_shape[0], 0:im_resize_shape[1], :] = im_resize
             inputs = np.array([im_blob], dtype=np.float32)
-            nms_bboxes, nms_scores, nms_classes, valid_detection_nums = self.yolov5.predict(inputs)
 
-            batch_bboxes.append(nms_bboxes[0] * self.image_shape[0] / im_scale)
-            batch_scores.append(nms_scores[0])
-            batch_classes.append(nms_classes[0])
-            batch_val_nums.append([valid_detection_nums[0]])
+            # 预测, [nms_nums, (x1, y1, x2, y2, conf, cls)]
+            nms_outputs = self.yolov5.predict(inputs)[0]
+            nms_outputs = np.array(nms_outputs, dtype=np.float32)
 
-        return batch_bboxes, batch_scores, batch_classes, batch_val_nums
+            # resize回原图大小
+            boxes = nms_outputs[:,:4]
+            b0 = np.maximum(np.minimum(boxes[:, 0] / im_scale, im_shape[1] - 1), 0)
+            b1 = np.maximum(np.minimum(boxes[:, 1] / im_scale, im_shape[0] - 1), 0)
+            b2 = np.maximum(np.minimum(boxes[:, 2] / im_scale, im_shape[1] - 1), 0)
+            b3 = np.maximum(np.minimum(boxes[:, 3] / im_scale, im_shape[0] - 1), 0)
+            origin_boxes = np.stack([b0, b1, b2, b3], axis=1)
+            nms_outputs[:, :4] = origin_boxes
+
+            outputs.append(nms_outputs)
+
+        return outputs
 
 
 if __name__ == "__main__":
