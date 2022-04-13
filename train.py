@@ -18,7 +18,7 @@ def main():
     epochs = 300
     log_dir = './logs'
     # 可以选择 ['5l', '5s', '5m', '5x']
-    yolov5_type = "5l" 
+    yolov5_type = "5l"
     image_shape = (640, 640, 3)
     num_class = 91
     batch_size = 3
