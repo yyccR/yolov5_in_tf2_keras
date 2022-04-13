@@ -42,6 +42,10 @@ tensorboard --host 0.0.0.0 --logdir ./logs/ --port 8053 --samples_per_plugin=ima
 http://127.0.0.1:8053
 ```    
 
+4. 测试, 修改`detect.py`里面`input_image`和`model_path`
+```python
+python3 detect.py
+```
 
 ### 训练自己的数据
 
