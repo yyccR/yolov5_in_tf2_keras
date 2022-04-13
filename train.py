@@ -17,6 +17,8 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 def main():
     epochs = 300
     log_dir = './logs'
+    # 可以选择 ['5l', '5s', '5m', '5x']
+    yolov5_type = "5l" 
     image_shape = (640, 640, 3)
     num_class = 91
     batch_size = 3
@@ -50,8 +52,7 @@ def main():
         is_training=True,
         anchors=anchors,
         anchor_masks=anchor_masks,
-        strides=[8, 16, 32],
-        net_type='5l'
+        net_type=yolov5_type
     )
     yolov5 = yolo.yolov5
     yolov5.summary(line_length=200)
@@ -142,6 +143,7 @@ def main():
                 with summary_writer.as_default():
                     tf.summary.image("imgs/gt,pred,epoch{}".format(epoch), summ_imgs,
                                      step=epoch * coco_data.total_batch_size + batch)
+    yolov5.save_weights(log_dir + '/yolov5-tf-{}.h5'.format(epochs))
 
 
 if __name__ == "__main__":
