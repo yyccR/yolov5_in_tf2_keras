@@ -43,7 +43,17 @@ def main():
         include_keypoint=False
     )
     # 类别名, 也可以自己提供一个数组, 不通过coco
-    classes = coco_data.coco.cats
+    classes = ['_background_', 'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
+               'train', 'truck', 'boat', 'traffic light', 'fire hydrant', 'none', 'stop sign',
+               'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse', 'sheep', 'cow', 'elephant',
+               'bear', 'zebra', 'giraffe', 'none', 'backpack', 'umbrella', 'none', 'none', 'handbag',
+               'tie', 'suitcase', 'frisbee', 'skis', 'snowboard', 'sports ball', 'kite', 'baseball bat',
+               'baseball glove', 'skateboard', 'surfboard', 'tennis racket', 'bottle', 'none', 'wine glass',
+               'cup', 'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple', 'sandwich', 'orange', 'broccoli',
+               'carrot', 'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch', 'potted plant', 'bed', 'none',
+               'dining table', 'none', 'none', 'toilet', 'none', 'tv', 'laptop', 'mouse', 'remote', 'keyboard',
+               'cell phone', 'microwave', 'oven', 'toaster', 'sink', 'refrigerator', 'none', 'book', 'clock',
+               'vase', 'scissors', 'teddy bear', 'hair drier', 'toothbrush']
 
     yolo = Yolo(
         model_path=model_path,
@@ -62,11 +72,10 @@ def main():
     for box_obj_cls in predicts:
         if box_obj_cls[4] > 0.5:
             label = int(box_obj_cls[5])
-            if classes.get(label):
-                class_name = classes[label]['name']
-                xmin, ymin, xmax, ymax = box_obj_cls[:4]
-                pred_image = draw_bounding_box(pred_image, class_name, box_obj_cls[4], int(xmin), int(ymin),
-                                             int(xmax), int(ymax))
+            class_name = classes[label]
+            xmin, ymin, xmax, ymax = box_obj_cls[:4]
+            pred_image = draw_bounding_box(pred_image, class_name, box_obj_cls[4], int(xmin), int(ymin),
+                                           int(xmax), int(ymax))
     cv2.imwrite("./data/tmp/predicts.jpg", pred_image)
 
 if __name__ == "__main__":
