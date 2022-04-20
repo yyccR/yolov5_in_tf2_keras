@@ -320,8 +320,9 @@ class CoCoDataGenrator:
         if len(np.shape(img)) < 2:
             return outputs
         elif len(np.shape(img)) == 2:
-            img = np.expand_dims(img, axis=-1)
-            img = np.pad(img, [(0, 0), (0, 0), (0, 2)])
+            img = cv2.cvtColor(img, cv2.COLOR_GRAY2RGB)
+            # img = np.expand_dims(img, axis=-1)
+            # img = np.pad(img, [(0, 0), (0, 0), (0, 2)])
         else:
             img = img[:, :, ::-1]
 

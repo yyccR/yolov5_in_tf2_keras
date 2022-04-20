@@ -16,13 +16,16 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 
 def main():
-    model_path = "h5模型路径, 默认在根目录下 ./yolov5-tf-300.h5"
-    image_path = "提供你要测试的图片路径"
+    # model_path = "h5模型路径, 默认在根目录下 ./yolov5-tf-300.h5"
+    model_path = "./logs/yolov5-tf-300.h5"
+    # image_path = "提供你要测试的图片路径"
+    image_path = "/data/yolov5_in_tf2_keras/data/./coco_2017_val_images/./303305.jpg"
     image = cv2.imread(image_path)
     # 可以选择 ['5l', '5s', '5m', '5x'], 跟随训练
     yolov5_type = "5l"
     image_shape = (640, 640, 3)
     num_class = 91
+    # num_class = 2
     batch_size = 1
 
     # 这里anchor归一化到[0,1]区间
@@ -44,7 +47,7 @@ def main():
     #     include_keypoint=False
     # )
     # 类别名, 也可以自己提供一个数组, 不通过coco
-    classes = ['_background_', 'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
+    classes = ['person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
                'train', 'truck', 'boat', 'traffic light', 'fire hydrant', 'none', 'stop sign',
                'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse', 'sheep', 'cow', 'elephant',
                'bear', 'zebra', 'giraffe', 'none', 'backpack', 'umbrella', 'none', 'none', 'handbag',
@@ -55,6 +58,7 @@ def main():
                'dining table', 'none', 'none', 'toilet', 'none', 'tv', 'laptop', 'mouse', 'remote', 'keyboard',
                'cell phone', 'microwave', 'oven', 'toaster', 'sink', 'refrigerator', 'none', 'book', 'clock',
                'vase', 'scissors', 'teddy bear', 'hair drier', 'toothbrush']
+    # classes = ['cat', 'dog']
 
     yolo = Yolo(
         model_path=model_path,
@@ -77,9 +81,9 @@ def main():
             xmin, ymin, xmax, ymax = box_obj_cls[:4]
             pred_image = draw_bounding_box(pred_image, class_name, box_obj_cls[4], int(xmin), int(ymin),
                                            int(xmax), int(ymax))
-    # cv2.imwrite("./data/tmp/predicts.jpg", pred_image)
-    cv2.imshow("prediction", pred_image)
-    cv2.waitKey(0)
+    cv2.imwrite("./data/tmp/predicts.jpg", pred_image)
+    # cv2.imshow("prediction", pred_image)
+    # cv2.waitKey(0)
 
 if __name__ == "__main__":
     main()

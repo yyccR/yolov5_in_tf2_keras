@@ -23,7 +23,7 @@ def main():
     num_class = 91
     batch_size = 3
     # -1表示全部数据参与训练
-    train_img_nums = 5
+    train_img_nums = 3
 
     # 这里anchor归一化到[0,1]区间
     anchors = np.array([[10, 13], [16, 30], [33, 23],
@@ -71,8 +71,8 @@ def main():
 
     # data = coco_data.next_batch()
     for epoch in range(epochs):
-        if epoch % 1 == 0 and epoch != 0:
-            yolov5.save_weights(log_dir + '/yolov5-tf-{}.h5'.format(epoch))
+        # if epoch % 10 == 0 and epoch != 0:
+            # yolov5.save_weights(log_dir + '/yolov5-tf-{}.h5'.format(epoch))
             # 保存为pb格式
             # yolov5.save(log_dir + '/yolov5-tf-{}.pb'.format(epoch), save_format='tf')
         for batch in range(coco_data.total_batch_size):
@@ -84,9 +84,9 @@ def main():
                 gt_classes = data['labels']
 
                 print("-------step {}--------".format(epoch * coco_data.total_batch_size + batch))
-                # for i, nums in enumerate(valid_nums):
-                #     print(gt_boxes[i,:nums,:])
-                #     print(gt_classes[i,:nums])
+                for i, nums in enumerate(valid_nums):
+                    print(gt_boxes[i,:nums,:])
+                    print(gt_classes[i,:nums])
 
                 yolo_preds = yolov5(gt_imgs, training=True)
                 loss_xy, loss_wh, loss_box, loss_obj, loss_cls = loss_fn(yolo_preds, gt_boxes, gt_classes)
@@ -125,7 +125,7 @@ def main():
                 # pred, 同样只拿第一个batch的pred
                 pred_img = gt_imgs[random_one].copy() * 255
                 yolo_head_output = yolo.yolo_head(yolo_preds, is_training=False)
-                nms_output = yolo.nms(yolo_head_output, iou_thres=0.3)
+                nms_output = yolo.nms(yolo_head_output.numpy(), iou_thres=0.3)
                 if len(nms_output) == batch_size:
                     nms_output = nms_output[random_one]
                     for box_obj_cls in nms_output:

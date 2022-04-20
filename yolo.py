@@ -83,7 +83,36 @@ class Yolo:
         if not is_training:
             assert model_path, "Inference mode need the model_path!"
             assert os.path.isfile(model_path), "Can't find the model weight file!"
-            self.yolov5.load_weights(model_path)
+            self.yolov5.load_weights(model_path, by_name=True)
+            # self.load_weights(model_path, by_name=True)
+            print("loading model weight from {}".format(model_path))
+
+    def load_weights(self, model_path, by_name=True, exclude=None):
+        import h5py
+        from tensorflow.python.keras.saving import hdf5_format
+
+        if exclude:
+            by_name = True
+
+        if h5py is None:
+            raise ImportError('`load_weights` requires h5py.')
+        with h5py.File(model_path, mode='r') as f:
+            if 'layer_names' not in f.attrs and 'model_weights' in f:
+                f = f['model_weights']
+
+            # In multi-GPU training, we wrap the model. Get layers
+            # of the inner model because they have the weights.
+            layers = self.yolov5.inner_model.layers if hasattr(self.yolov5, "inner_model") \
+                else self.yolov5.layers
+
+            # Exclude some layers
+            if exclude:
+                layers = filter(lambda l: l.name not in exclude, layers)
+
+            if by_name:
+                hdf5_format.load_weights_from_hdf5_group_by_name(f, layers)
+            else:
+                hdf5_format.load_weights_from_hdf5_group(f, layers)
 
     def yolo_head(self, features, is_training):
         """ yolo最后输出层
@@ -144,7 +173,7 @@ class Yolo:
 
         # 这里遍历每个batch,也就是每张图, 输出的3层预测已经做了合并处理成[batch, -1, 5+num_class]
         for i, predict in enumerate(predicts):
-            predict = predict.numpy()
+            # predict = predict.numpy()
             # 首先只要那些目标概率大于阈值的
             obj_mask = predict[..., 4] > conf_thres
             predict = predict[obj_mask]
@@ -161,7 +190,6 @@ class Yolo:
             x2 = np.minimum(predict[:, 0] + predict[:, 2] / 2, self.image_shape[1])
             y2 = np.minimum(predict[:, 1] + predict[:, 3] / 2, self.image_shape[0])
             box = np.concatenate([x1[:, None], y1[:, None], x2[:, None], y2[:, None]], axis=-1)
-            # print('-----------------------1')
             # Detections matrix [n, (x1, y1, x2, y2, conf, cls)]
             max_cls_ids = np.array(predict[:, 5:].argmax(axis=1), dtype=np.float32)
             max_cls_score = predict[:, 5:].max(axis=1)
@@ -189,6 +217,7 @@ class Yolo:
         inputs = tf.keras.layers.Input(shape=self.image_shape, batch_size=self.batch_size)
         yolo_body_outputs = self.base_net(inputs)
         outputs = self.yolo_head(yolo_body_outputs, is_training=is_training)
+        # outputs = self.yolo_head(yolo_body_outputs, is_training=True)
         # if not self.is_training:
         #     outputs = self.nms(outputs, iou_thres=self.yolo_iou_threshold, conf_thres=self.yolo_conf_threshold)
         model = tf.keras.models.Model(inputs=inputs, outputs=outputs)
@@ -201,14 +230,14 @@ class Yolo:
         :return [[nms_nums, (x1, y1, x2, y2, conf, cls)], [...], [...], ...]
         """
 
-        if len(images) <= 3:
+        if len(np.shape(images)) <= 3:
             images = [images]
             self.batch_size = 1
 
         outputs = []
         for i, im in enumerate(images):
             im_shape = np.shape(im)
-            im_size_max = np.max(im_shape[i][0:2])
+            im_size_max = np.max(im_shape[0:2])
             im_scale = float(self.image_shape[0]) / float(im_size_max)
 
             # resize原始图片
@@ -221,7 +250,7 @@ class Yolo:
             # 预测, [batch, -1, num_class + 5]
             outputs = self.yolov5.predict(inputs)
             # 非极大抑制, [nms_nums, (x1, y1, x2, y2, conf, cls)]
-            nms_outputs = self.nms(outputs)[0]
+            nms_outputs = self.nms(outputs)
             nms_outputs = np.array(nms_outputs, dtype=np.float32)
 
             # resize回原图大小
