@@ -189,13 +189,13 @@ class Yolo:
         inputs = tf.keras.layers.Input(shape=self.image_shape, batch_size=self.batch_size)
         yolo_body_outputs = self.base_net(inputs)
         outputs = self.yolo_head(yolo_body_outputs, is_training=is_training)
-        if not self.is_training:
-            outputs = yolo.nms(outputs, iou_thres=self.yolo_iou_threshold, conf_thres=self.yolo_conf_threshold)
+        # if not self.is_training:
+        #     outputs = self.nms(outputs, iou_thres=self.yolo_iou_threshold, conf_thres=self.yolo_conf_threshold)
         model = tf.keras.models.Model(inputs=inputs, outputs=outputs)
         return model
 
     def predict(self, images):
-        """预测, bulid_graph里面已经处理好nms, 只需要*对应的image size就行,
+        """预测
            预测模式下实例化类: is_training=False, weights_path=, batch_size跟随输入建议1, image_shape跟随训练模式,不做调整
         :param images: [batch, h, w, c] or [h, w, c]
         :return [[nms_nums, (x1, y1, x2, y2, conf, cls)], [...], [...], ...]
@@ -218,8 +218,10 @@ class Yolo:
             im_blob[0:im_resize_shape[0], 0:im_resize_shape[1], :] = im_resize
             inputs = np.array([im_blob], dtype=np.float32)
 
-            # 预测, [nms_nums, (x1, y1, x2, y2, conf, cls)]
-            nms_outputs = self.yolov5.predict(inputs)[0]
+            # 预测, [batch, -1, num_class + 5]
+            outputs = self.yolov5.predict(inputs)
+            # 非极大抑制, [nms_nums, (x1, y1, x2, y2, conf, cls)]
+            nms_outputs = self.nms(outputs)[0]
             nms_outputs = np.array(nms_outputs, dtype=np.float32)
 
             # resize回原图大小

@@ -19,6 +19,7 @@ def main():
     model_path = "h5模型路径, 默认在根目录下 ./yolov5-tf-300.h5"
     image_path = "提供你要测试的图片路径"
     image = cv2.imread(image_path)
+    # 可以选择 ['5l', '5s', '5m', '5x'], 跟随训练
     yolov5_type = "5l"
     image_shape = (640, 640, 3)
     num_class = 91
@@ -32,16 +33,16 @@ def main():
     # 分别对应1/8, 1/16, 1/32预测输出层
     anchor_masks = np.array([[0, 1, 2], [3, 4, 5], [6, 7, 8]], dtype=np.int8)
     # data generator
-    coco_data = CoCoDataGenrator(
-        coco_annotation_file='./data/instances_val2017.json',
-        train_img_nums=1,
-        img_shape=image_shape,
-        batch_size=batch_size,
-        max_instances=num_class,
-        include_mask=False,
-        include_crowd=False,
-        include_keypoint=False
-    )
+    # coco_data = CoCoDataGenrator(
+    #     coco_annotation_file='./data/instances_val2017.json',
+    #     train_img_nums=1,
+    #     img_shape=image_shape,
+    #     batch_size=batch_size,
+    #     max_instances=num_class,
+    #     include_mask=False,
+    #     include_crowd=False,
+    #     include_keypoint=False
+    # )
     # 类别名, 也可以自己提供一个数组, 不通过coco
     classes = ['_background_', 'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
                'train', 'truck', 'boat', 'traffic light', 'fire hydrant', 'none', 'stop sign',
@@ -76,7 +77,9 @@ def main():
             xmin, ymin, xmax, ymax = box_obj_cls[:4]
             pred_image = draw_bounding_box(pred_image, class_name, box_obj_cls[4], int(xmin), int(ymin),
                                            int(xmax), int(ymax))
-    cv2.imwrite("./data/tmp/predicts.jpg", pred_image)
+    # cv2.imwrite("./data/tmp/predicts.jpg", pred_image)
+    cv2.imshow("prediction", pred_image)
+    cv2.waitKey(0)
 
 if __name__ == "__main__":
     main()
