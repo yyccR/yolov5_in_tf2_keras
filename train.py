@@ -21,7 +21,7 @@ def main():
     yolov5_type = "5l"
     image_shape = (640, 640, 3)
     num_class = 91
-    batch_size = 8
+    batch_size = 4
     # -1表示全部数据参与训练
     train_img_nums = -1
 
@@ -85,10 +85,10 @@ def main():
 
                 print("-------epoch {}, step {}, total step {}--------".format(epoch, batch,
                                                                                epoch * coco_data.total_batch_size + batch))
+                print("current data index: ",
+                      coco_data.img_ids[(coco_data.current_batch_index - 1) * coco_data.batch_size:
+                                        coco_data.current_batch_index * coco_data.batch_size])
                 for i, nums in enumerate(valid_nums):
-                    print("current data index: ",
-                          coco_data.img_ids[(coco_data.current_batch_index - 1) * coco_data.batch_size:
-                                            coco_data.current_batch_index * coco_data.batch_size])
                     print("gt boxes: ", gt_boxes[i, :nums, :] * image_shape[0])
                     print("gt classes: ", gt_classes[i, :nums])
 
