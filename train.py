@@ -21,9 +21,9 @@ def main():
     yolov5_type = "5l"
     image_shape = (640, 640, 3)
     num_class = 91
-    batch_size = 3
+    batch_size = 8
     # -1表示全部数据参与训练
-    train_img_nums = 3
+    train_img_nums = -1
 
     # 这里anchor归一化到[0,1]区间
     anchors = np.array([[10, 13], [16, 30], [33, 23],
@@ -65,16 +65,16 @@ def main():
         num_class=num_class,
         anchor_ratio_thres=4,
         only_best_anchor=False,
-        balanced_rate=20,
+        balanced_rate=15,
         iou_ignore_thres=0.5
     )
 
     # data = coco_data.next_batch()
     for epoch in range(epochs):
         # if epoch % 10 == 0 and epoch != 0:
-            # yolov5.save_weights(log_dir + '/yolov5-tf-{}.h5'.format(epoch))
-            # 保存为pb格式
-            # yolov5.save(log_dir + '/yolov5-tf-{}.pb'.format(epoch), save_format='tf')
+        # yolov5.save_weights(log_dir + '/yolov5-tf-{}.h5'.format(epoch))
+        # 保存为pb格式
+        # yolov5.save(log_dir + '/yolov5-tf-{}.pb'.format(epoch), save_format='tf')
         for batch in range(coco_data.total_batch_size):
             with tf.GradientTape() as tape:
                 data = coco_data.next_batch()
@@ -83,10 +83,14 @@ def main():
                 gt_boxes = np.array(data['bboxes'] / image_shape[0], dtype=np.float32)
                 gt_classes = data['labels']
 
-                print("-------step {}--------".format(epoch * coco_data.total_batch_size + batch))
+                print("-------epoch {}, step {}, total step {}--------".format(epoch, batch,
+                                                                               epoch * coco_data.total_batch_size + batch))
                 for i, nums in enumerate(valid_nums):
-                    print(gt_boxes[i,:nums,:])
-                    print(gt_classes[i,:nums])
+                    print("current data index: ",
+                          coco_data.img_ids[(coco_data.current_batch_index - 1) * coco_data.batch_size:
+                                            coco_data.current_batch_index * coco_data.batch_size])
+                    print("gt boxes: ", gt_boxes[i, :nums, :] * image_shape[0])
+                    print("gt classes: ", gt_classes[i, :nums])
 
                 yolo_preds = yolov5(gt_imgs, training=True)
                 loss_xy, loss_wh, loss_box, loss_obj, loss_cls = loss_fn(yolo_preds, gt_boxes, gt_classes)
