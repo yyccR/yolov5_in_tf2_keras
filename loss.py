@@ -346,6 +346,7 @@ class ComputeLoss:
             # true_obj = tf.tensor_scatter_nd_add(true_obj, indices, iou)
             obj_loss = tf.keras.losses.binary_crossentropy(true_obj, pred_obj)
             obj_loss = conf_focal * (obj_mask * obj_loss + (1 - obj_mask) * ignore_mask * obj_loss)
+            # obj_loss =  obj_mask * obj_loss + (1 - obj_mask) * ignore_mask * obj_loss
 
             # obj_loss = tf.keras.losses.binary_crossentropy(true_obj, pred_obj)
             # 这里除了正样本会计算损失, 负样本低于一定置信的也计算损失
