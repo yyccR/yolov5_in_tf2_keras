@@ -83,7 +83,7 @@ class Yolo:
         if not is_training:
             assert model_path, "Inference mode need the model_path!"
             assert os.path.isfile(model_path), "Can't find the model weight file!"
-            self.yolov5.load_weights(model_path, by_name=True)
+            self.yolov5.load_weights(model_path)
             # self.load_weights(model_path, by_name=True)
             print("loading model weight from {}".format(model_path))
 
@@ -160,7 +160,7 @@ class Yolo:
 
         return grid, anchor_grid
 
-    def nms(self, predicts, conf_thres=0.25, iou_thres=0.45, max_det=300, max_nms=3000):
+    def nms(self, predicts, conf_thres=0.25, iou_thres=0.2, max_det=300, max_nms=3000):
         """ 原yolov5简化版nms, 不用multi label, 不做merge box
 
         :param predicts:
@@ -183,6 +183,8 @@ class Yolo:
                 continue
 
             # 类别概率乘上了目标概率, 作为最终判别概率
+            print(np.max(predict[:, 5:]), np.min(predict[:, 5:]))
+            print(np.max(predict[:, 4:5]), np.min(predict[:, 4:5]))
             predict[:, 5:] *= predict[:, 4:5]
 
             x1 = np.maximum(predict[:, 0] - predict[:, 2] / 2, 0)
@@ -234,27 +236,33 @@ class Yolo:
             images = [images]
             self.batch_size = 1
 
-        outputs = []
+        final_outputs = []
         for i, im in enumerate(images):
             im_shape = np.shape(im)
             im_size_max = np.max(im_shape[0:2])
             im_scale = float(self.image_shape[0]) / float(im_size_max)
 
             # resize原始图片
-            im_resize = cv2.resize(im, None, None, fx=im_scale, fy=im_scale, interpolation=cv2.INTER_LINEAR) / 255.
+            im_resize = cv2.resize(im, None, None, fx=im_scale, fy=im_scale, interpolation=cv2.INTER_LINEAR)
             im_resize_shape = np.shape(im_resize)
             im_blob = np.zeros(self.image_shape, dtype=np.float32)
             im_blob[0:im_resize_shape[0], 0:im_resize_shape[1], :] = im_resize
-            inputs = np.array([im_blob], dtype=np.float32)
+            inputs = np.array([im_blob], dtype=np.float32) / 255.
 
             # 预测, [batch, -1, num_class + 5]
+            # outputs = self.yolov5.predict(inputs)
             outputs = self.yolov5.predict(inputs)
+            # outputs = self.yolov5(inputs, training=True)
+            # outputs = self.yolo_head(outputs, is_training=False)
             # 非极大抑制, [nms_nums, (x1, y1, x2, y2, conf, cls)]
-            nms_outputs = self.nms(outputs)
+            # nms_outputs = self.nms(outputs.numpy(), iou_thres=0.3)[0]
+            # nms_outputs = self.nms(outputs.numpy())[0]
+            nms_outputs = self.nms(outputs)[0]
             nms_outputs = np.array(nms_outputs, dtype=np.float32)
+            print(np.shape(nms_outputs))
 
             # resize回原图大小
-            boxes = nms_outputs[:,:4]
+            boxes = nms_outputs[:, :4]
             b0 = np.maximum(np.minimum(boxes[:, 0] / im_scale, im_shape[1] - 1), 0)
             b1 = np.maximum(np.minimum(boxes[:, 1] / im_scale, im_shape[0] - 1), 0)
             b2 = np.maximum(np.minimum(boxes[:, 2] / im_scale, im_shape[1] - 1), 0)
@@ -262,9 +270,9 @@ class Yolo:
             origin_boxes = np.stack([b0, b1, b2, b3], axis=1)
             nms_outputs[:, :4] = origin_boxes
 
-            outputs.append(nms_outputs)
+            final_outputs.append(nms_outputs)
 
-        return outputs
+        return final_outputs
 
 
 if __name__ == "__main__":
