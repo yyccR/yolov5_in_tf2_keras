@@ -183,8 +183,6 @@ class Yolo:
                 continue
 
             # 类别概率乘上了目标概率, 作为最终判别概率
-            print(np.max(predict[:, 5:]), np.min(predict[:, 5:]))
-            print(np.max(predict[:, 4:5]), np.min(predict[:, 4:5]))
             predict[:, 5:] *= predict[:, 4:5]
 
             x1 = np.maximum(predict[:, 0] - predict[:, 2] / 2, 0)
@@ -259,7 +257,6 @@ class Yolo:
             # nms_outputs = self.nms(outputs.numpy())[0]
             nms_outputs = self.nms(outputs)[0]
             nms_outputs = np.array(nms_outputs, dtype=np.float32)
-            print(np.shape(nms_outputs))
 
             # resize回原图大小
             boxes = nms_outputs[:, :4]

@@ -16,10 +16,8 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 
 def main():
-    # model_path = "h5模型路径, 默认在根目录下 ./yolov5-tf-300.h5"
-    model_path = "./logs/yolov5-tf-300.h5"
-    # image_path = "提供你要测试的图片路径"
-    image_path = "/data/yolov5_in_tf2_keras/data/./coco_2017_val_images/./303305.jpg"
+    model_path = "h5模型路径, 默认在根目录下 ./yolov5-tf-300.h5"
+    image_path = "提供你要测试的图片路径"
     image = cv2.imread(image_path)
     # 可以选择 ['5l', '5s', '5m', '5x'], 跟随训练
     yolov5_type = "5l"
@@ -47,7 +45,7 @@ def main():
     #     include_keypoint=False
     # )
     # 类别名, 也可以自己提供一个数组, 不通过coco
-    classes = ['person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
+    classes = ['none', 'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
                'train', 'truck', 'boat', 'traffic light', 'fire hydrant', 'none', 'stop sign',
                'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse', 'sheep', 'cow', 'elephant',
                'bear', 'zebra', 'giraffe', 'none', 'backpack', 'umbrella', 'none', 'none', 'handbag',
@@ -70,6 +68,8 @@ def main():
         anchor_masks=anchor_masks,
         net_type=yolov5_type
     )
+    yolo.yolov5.summary(line_length=100)
+    # yolo.yolov5.load_weights(model_path)
 
     # 预测结果: [nms_nums, (x1, y1, x2, y2, conf, cls)]
     predicts = yolo.predict(image)[0]
