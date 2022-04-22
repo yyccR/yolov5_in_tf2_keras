@@ -71,10 +71,10 @@ def main():
 
     # data = coco_data.next_batch()
     for epoch in range(epochs):
-        # if epoch % 10 == 0 and epoch != 0:
-        # yolov5.save_weights(log_dir + '/yolov5-tf-{}.h5'.format(epoch))
-        # 保存为pb格式
-        # yolov5.save(log_dir + '/yolov5-tf-{}.pb'.format(epoch), save_format='tf')
+        if epoch % 10 == 0 and epoch != 0:
+            yolov5.save_weights(log_dir + '/yolov5-tf-{}.h5'.format(epoch))
+            # 保存为pb格式
+            # yolov5.save(log_dir + '/yolov5-tf-{}.pb'.format(epoch), save_format='tf')
         for batch in range(coco_data.total_batch_size):
             with tf.GradientTape() as tape:
                 data = coco_data.next_batch()
