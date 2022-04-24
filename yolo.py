@@ -255,8 +255,10 @@ class Yolo:
             # 非极大抑制, [nms_nums, (x1, y1, x2, y2, conf, cls)]
             # nms_outputs = self.nms(outputs.numpy(), iou_thres=0.3)[0]
             # nms_outputs = self.nms(outputs.numpy())[0]
-            nms_outputs = self.nms(outputs)[0]
-            nms_outputs = np.array(nms_outputs, dtype=np.float32)
+            nms_outputs = self.nms(outputs)
+            if not nms_outputs.shape[0]:
+                continue
+            nms_outputs = np.array(nms_outputs[0], dtype=np.float32)
 
             # resize回原图大小
             boxes = nms_outputs[:, :4]
@@ -268,6 +270,7 @@ class Yolo:
             nms_outputs[:, :4] = origin_boxes
 
             final_outputs.append(nms_outputs)
+        final_outputs = np.array(final_outputs)
 
         return final_outputs
 

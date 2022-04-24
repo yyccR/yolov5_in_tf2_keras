@@ -16,7 +16,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 
 def main():
-    model_path = "h5模型路径, 默认在根目录下 ./yolov5-tf-300.h5"
+    model_path = "h5模型路径, 默认在 ./logs/yolov5-tf-300.h5"
     image_path = "提供你要测试的图片路径"
     image = cv2.imread(image_path)
     # 可以选择 ['5l', '5s', '5m', '5x'], 跟随训练
@@ -69,21 +69,21 @@ def main():
         net_type=yolov5_type
     )
     yolo.yolov5.summary(line_length=100)
-    # yolo.yolov5.load_weights(model_path)
 
     # 预测结果: [nms_nums, (x1, y1, x2, y2, conf, cls)]
-    predicts = yolo.predict(image)[0]
-    pred_image = image.copy()
-    for box_obj_cls in predicts:
-        if box_obj_cls[4] > 0.5:
-            label = int(box_obj_cls[5])
-            class_name = classes[label]
-            xmin, ymin, xmax, ymax = box_obj_cls[:4]
-            pred_image = draw_bounding_box(pred_image, class_name, box_obj_cls[4], int(xmin), int(ymin),
-                                           int(xmax), int(ymax))
-    cv2.imwrite("./data/tmp/predicts.jpg", pred_image)
-    # cv2.imshow("prediction", pred_image)
-    # cv2.waitKey(0)
+    predicts = yolo.predict(image)
+    if predicts.shape[0]:
+        pred_image = image.copy()
+        for box_obj_cls in predicts:
+            if box_obj_cls[4] > 0.5:
+                label = int(box_obj_cls[5])
+                class_name = classes[label]
+                xmin, ymin, xmax, ymax = box_obj_cls[:4]
+                pred_image = draw_bounding_box(pred_image, class_name, box_obj_cls[4], int(xmin), int(ymin),
+                                               int(xmax), int(ymax))
+        cv2.imwrite("./data/tmp/predicts.jpg", pred_image)
+        # cv2.imshow("prediction", pred_image)
+        # cv2.waitKey(0)
 
 if __name__ == "__main__":
     main()
