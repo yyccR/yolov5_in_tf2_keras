@@ -5,6 +5,8 @@ sys.path.append("../../detector_in_keras")
 import os
 import cv2
 import random
+import re
+import traceback
 from pycocotools.coco import COCO
 import numpy as np
 import skimage.io as io
@@ -76,13 +78,14 @@ class CoCoDataGenrator:
             if os.path.isfile(file_path):
                 print("already exist file: {}".format(file_path))
             else:
-                try:
-                    im = io.imread(self.coco.imgs[img_id]['coco_url'])
-                    io.imsave(file_path, im)
-                    print("save image {}, {}/{}".format(file_path, i+1, len(self.img_ids)))
-                except Exception as e:
-                    print(e)
-                    print(img_id, file_path)
+                if self.coco.imgs[img_id].get("coco_url"):
+                    try:
+                        im = io.imread(self.coco.imgs[img_id]['coco_url'])
+                        io.imsave(file_path, im)
+                        print("save image {}, {}/{}".format(file_path, i+1, len(self.img_ids)))
+                    except Exception as e:
+                        traceback.print_exc()
+                        print("current img_id: ", img_id, "current img_file: ", file_path)
 
     def next_batch(self):
         if self.current_batch_index >= self.total_batch_size:
@@ -294,11 +297,18 @@ class CoCoDataGenrator:
 
         img_coco_url_file = str(self.coco.imgs[image_id].get('coco_url',""))
         img_url_file = str(self.coco.imgs[image_id].get('url',""))
-        img_local_file = str(self.coco.imgs[image_id].get('file_name',""))
-        img_local_file = os.path.join(os.path.dirname(self.coco_annotation_file), img_local_file)
-        img = []
+        # img_local_file = str(self.coco.imgs[image_id].get('file_name',""))
+        # img_local_file = os.path.join(os.path.dirname(self.coco_annotation_file), img_local_file)
+        img_download_file = os.path.join(self.download_image_path,  "./{}.jpg".format(image_id))
 
-        if os.path.isfile(img_local_file):
+        img_local_file = str(self.coco.imgs[image_id].get('file_name', "")).encode('unicode_escape').decode()
+        img_local_file = os.path.join(os.path.dirname(self.coco_annotation_file), img_local_file)
+        img_local_file = re.sub(r"\\\\", "/", img_local_file)
+
+        img = []
+        if os.path.isfile(img_download_file):
+            img = io.imread(img_download_file)
+        elif os.path.isfile(img_local_file):
             img = io.imread(img_local_file)
         elif img_coco_url_file.startswith("http"):
             download_image_file = self.download_image_path + "./{}.jpg".format(image_id)
@@ -343,7 +353,8 @@ class CoCoDataGenrator:
 if __name__ == "__main__":
     from data.visual_ops import draw_bounding_box, draw_instance
 
-    file = "./instances_val2017.json"
+    # file = "./instances_val2017.json"
+    file = "./tmp/annotations.json"
     coco = CoCoDataGenrator(
         coco_annotation_file=file,
         train_img_nums=1,
@@ -351,34 +362,33 @@ if __name__ == "__main__":
         include_keypoint=False,
         batch_size=1)
 
-    # data = coco.next_batch()
-    # gt_imgs = data['imgs']
-    # gt_boxes = data['bboxes']
-    # gt_classes = data['labels']
-    # gt_masks = data['masks']
-    # valid_nums = data['valid_nums']
+    data = coco.next_batch()
+    gt_imgs = data['imgs']
+    gt_boxes = data['bboxes']
+    gt_classes = data['labels']
+    gt_masks = data['masks']
+    valid_nums = data['valid_nums']
+
+    img = gt_imgs[-1]
+    for i in range(valid_nums[-1]):
+        label = gt_classes[-1][i]
+        label_name = coco.coco.cats[label]['name']
+        x1, y1, x2, y2 = gt_boxes[-1][i]
+        mask = gt_masks[-1][:, :, i]
+        img = draw_instance(img, mask)
+        img = draw_bounding_box(img, label_name, label, x1, y1, x2, y2)
+    cv2.imshow("", img)
+    cv2.waitKey(0)
+
+    # print(coco.coco.cats)
+    # for i in range(90):
+    #     if coco.coco.cats.get(i):
+    #         print(coco.coco.cats[i]['name'])
+    #     else:
+    #         print("none")
     #
-    # img = gt_imgs[-1]
-    # for i in range(valid_nums[-1]):
-    #     label = gt_classes[-1][i]
-    #     label_name = coco.coco.cats[label]['name']
-    #     x1, y1, x2, y2 = gt_boxes[-1][i]
-    #     mask = gt_masks[-1][:, :, i]
-    #     img = draw_instance(img, mask)
-    #     img = draw_bounding_box(img, label_name, label, x1, y1, x2, y2)
-    # cv2.imshow("", img)
-    # cv2.waitKey(0)
-
-    # data = coco.next_batch()
-    # print(data)
-    for i in range(90):
-        if coco.coco.cats.get(i):
-            print(coco.coco.cats[i]['name'])
-        else:
-            print("none")
-
-    for i in coco.coco.cats:
-        print(i)
+    # for i in coco.coco.cats:
+    #     print(i)
     # outputs = coco._data_generation(image_id=348045)
     # cv2.imshow("image", np.array(outputs['img'],dtype=np.uint8))
     # cv2.waitKey(0)
