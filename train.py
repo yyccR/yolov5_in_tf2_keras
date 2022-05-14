@@ -20,7 +20,8 @@ def main():
     # 可以选择 ['5l', '5s', '5m', '5x']
     yolov5_type = "5l"
     image_shape = (640, 640, 3)
-    num_class = 91
+    # num_class = 91
+    num_class = 3
     batch_size = 4
     # -1表示全部数据参与训练
     train_img_nums = -1
@@ -36,7 +37,8 @@ def main():
     summary_writer = tf.summary.create_file_writer(log_dir)
     # data generator
     coco_data = CoCoDataGenrator(
-        coco_annotation_file='./data/instances_val2017.json',
+        # coco_annotation_file='./data/instances_val2017.json',
+        coco_annotation_file='./data/tmp/annotations.json',
         train_img_nums=train_img_nums,
         img_shape=image_shape,
         batch_size=batch_size,
@@ -71,8 +73,8 @@ def main():
 
     # data = coco_data.next_batch()
     for epoch in range(epochs):
-        if epoch % 10 == 0 and epoch != 0:
-            yolov5.save_weights(log_dir + '/yolov5-tf-{}.h5'.format(epoch))
+        # if epoch % 20 == 0 and epoch != 0:
+        #     yolov5.save_weights(log_dir + '/yolov5-tf-{}.h5'.format(epoch))
             # 保存为pb格式
             # yolov5.save(log_dir + '/yolov5-tf-{}.pb'.format(epoch), save_format='tf')
         for batch in range(coco_data.total_batch_size):
