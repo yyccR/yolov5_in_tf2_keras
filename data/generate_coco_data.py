@@ -2,9 +2,11 @@ import sys
 
 sys.path.append("../../detector_in_keras")
 
+import re
 import os
 import cv2
 import random
+import traceback
 from pycocotools.coco import COCO
 import numpy as np
 import skimage.io as io
@@ -20,10 +22,13 @@ class CoCoDataGenrator:
                  include_crowd=False,
                  include_mask=False,
                  include_keypoint=False,
+                 need_down_image=False,
                  download_image_path=os.path.dirname(os.path.abspath(__file__)) + "/" + './coco_2017_val_images/',
                  ):
         # 设置要训练的图片数, -1表示全部
         self.train_img_nums = train_img_nums
+        # 是否需要下载图片数据, 只有官方CoCo数据才需要下载, 自己打标转CoCo格式不需要
+        self.need_down_image = need_down_image
         # 设置下载保存coco json文件中图片的目录
         self.download_image_path = download_image_path
         # 图片最终resize+padding后的大小
@@ -44,7 +49,8 @@ class CoCoDataGenrator:
         self.img_ids = []
         self.coco = COCO(annotation_file=coco_annotation_file)
         self.load_data()
-        self.download_image_files()
+        if self.need_down_image:
+            self.download_image_files()
 
     def load_data(self):
         # 初步过滤数据是否包含crowd
@@ -56,9 +62,8 @@ class CoCoDataGenrator:
                 if annos:
                     target_img_ids.append(k)
 
-        if self.train_img_nums > 0:
-            np.random.shuffle(target_img_ids)
-            target_img_ids = target_img_ids[:self.train_img_nums]
+        np.random.shuffle(target_img_ids)
+        target_img_ids = target_img_ids[:self.train_img_nums]
 
         self.total_batch_size = len(target_img_ids) // self.batch_size
         self.img_ids = target_img_ids
@@ -81,7 +86,7 @@ class CoCoDataGenrator:
                     io.imsave(file_path, im)
                     print("save image {}, {}/{}".format(file_path, i+1, len(self.img_ids)))
                 except Exception as e:
-                    print(e)
+                    print(traceback.format_exc())
                     print(img_id, file_path)
 
     def next_batch(self):
@@ -292,10 +297,11 @@ class CoCoDataGenrator:
         #     print("save image {}".format(file_path))
         # img = cv2.imread(img_file)
 
-        img_coco_url_file = str(self.coco.imgs[image_id].get('coco_url',""))
-        img_url_file = str(self.coco.imgs[image_id].get('url',""))
-        img_local_file = str(self.coco.imgs[image_id].get('file_name',""))
+        img_coco_url_file = str(self.coco.imgs[image_id].get('coco_url', ""))
+        img_url_file = str(self.coco.imgs[image_id].get('url', ""))
+        img_local_file = str(self.coco.imgs[image_id].get('file_name', "")).encode('unicode_escape').decode()
         img_local_file = os.path.join(os.path.dirname(self.coco_annotation_file), img_local_file)
+        img_local_file = re.sub(r"\\\\", "/", img_local_file)
         img = []
 
         if os.path.isfile(img_local_file):
@@ -344,41 +350,42 @@ if __name__ == "__main__":
     from data.visual_ops import draw_bounding_box, draw_instance
 
     file = "./instances_val2017.json"
+    # file = "./yanhua/annotations.json"
     coco = CoCoDataGenrator(
         coco_annotation_file=file,
-        train_img_nums=1,
-        include_mask=True,
+        train_img_nums=-1,
+        include_mask=False,
         include_keypoint=False,
         batch_size=1)
 
-    # data = coco.next_batch()
-    # gt_imgs = data['imgs']
-    # gt_boxes = data['bboxes']
-    # gt_classes = data['labels']
-    # gt_masks = data['masks']
-    # valid_nums = data['valid_nums']
-    #
-    # img = gt_imgs[-1]
-    # for i in range(valid_nums[-1]):
-    #     label = gt_classes[-1][i]
-    #     label_name = coco.coco.cats[label]['name']
-    #     x1, y1, x2, y2 = gt_boxes[-1][i]
-    #     mask = gt_masks[-1][:, :, i]
-    #     img = draw_instance(img, mask)
-    #     img = draw_bounding_box(img, label_name, label, x1, y1, x2, y2)
-    # cv2.imshow("", img)
-    # cv2.waitKey(0)
+    data = coco.next_batch()
+    gt_imgs = data['imgs']
+    gt_boxes = data['bboxes']
+    gt_classes = data['labels']
+    gt_masks = data['masks']
+    valid_nums = data['valid_nums']
+
+    img = gt_imgs[-1]
+    for i in range(valid_nums[-1]):
+        label = gt_classes[-1][i]
+        label_name = coco.coco.cats[label]['name']
+        x1, y1, x2, y2 = gt_boxes[-1][i]
+        # mask = gt_masks[-1][:, :, i]
+        # img = draw_instance(img, mask)
+        img = draw_bounding_box(img, label_name, label, x1, y1, x2, y2)
+    cv2.imshow("", img)
+    cv2.waitKey(0)
 
     # data = coco.next_batch()
     # print(data)
-    for i in range(90):
-        if coco.coco.cats.get(i):
-            print(coco.coco.cats[i]['name'])
-        else:
-            print("none")
-
-    for i in coco.coco.cats:
-        print(i)
+    # for i in range(90):
+    #     if coco.coco.cats.get(i):
+    #         print(coco.coco.cats[i]['name'])
+    #     else:
+    #         print("none")
+    #
+    # for i in coco.coco.cats:
+    #     print(i)
     # outputs = coco._data_generation(image_id=348045)
     # cv2.imshow("image", np.array(outputs['img'],dtype=np.uint8))
     # cv2.waitKey(0)
