@@ -2,10 +2,10 @@ import sys
 
 sys.path.append("../../detector_in_keras")
 
-import re
 import os
 import cv2
 import random
+import re
 import traceback
 from pycocotools.coco import COCO
 import numpy as np
@@ -62,8 +62,9 @@ class CoCoDataGenrator:
                 if annos:
                     target_img_ids.append(k)
 
-        np.random.shuffle(target_img_ids)
-        target_img_ids = target_img_ids[:self.train_img_nums]
+        if self.train_img_nums > 0:
+            # np.random.shuffle(target_img_ids)
+            target_img_ids = target_img_ids[:self.train_img_nums]
 
         self.total_batch_size = len(target_img_ids) // self.batch_size
         self.img_ids = target_img_ids
@@ -81,13 +82,14 @@ class CoCoDataGenrator:
             if os.path.isfile(file_path):
                 print("already exist file: {}".format(file_path))
             else:
-                try:
-                    im = io.imread(self.coco.imgs[img_id]['coco_url'])
-                    io.imsave(file_path, im)
-                    print("save image {}, {}/{}".format(file_path, i+1, len(self.img_ids)))
-                except Exception as e:
-                    print(traceback.format_exc())
-                    print(img_id, file_path)
+                if self.coco.imgs[img_id].get("coco_url"):
+                    try:
+                        im = io.imread(self.coco.imgs[img_id]['coco_url'])
+                        io.imsave(file_path, im)
+                        print("save image {}, {}/{}".format(file_path, i+1, len(self.img_ids)))
+                    except Exception as e:
+                        traceback.print_exc()
+                        print("current img_id: ", img_id, "current img_file: ", file_path)
 
     def next_batch(self):
         if self.current_batch_index >= self.total_batch_size:
@@ -302,6 +304,7 @@ class CoCoDataGenrator:
         img_local_file = str(self.coco.imgs[image_id].get('file_name', "")).encode('unicode_escape').decode()
         img_local_file = os.path.join(os.path.dirname(self.coco_annotation_file), img_local_file)
         img_local_file = re.sub(r"\\\\", "/", img_local_file)
+
         img = []
 
         if os.path.isfile(img_local_file):

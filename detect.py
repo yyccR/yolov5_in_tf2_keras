@@ -16,16 +16,16 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 
 def main():
-    model_path = "h5模型路径, 默认在 ./logs/yolov5-tf-300.h5"
-    # model_path = "./logs/yolov5-tf-300.h5"
-    image_path = "提供你要测试的图片路径"
-    # image_path = "./data/tmp/JPEGImages/Cats_Test0.jpg"
+    # model_path = "h5模型路径, 默认在 ./logs/yolov5-tf-300.h5"
+    model_path = "./logs/yolov5-tf-300.h5"
+    # image_path = "提供你要测试的图片路径"
+    image_path = "./data/tmp/JPEGImages/Cats_Test101.jpg"
     image = cv2.imread(image_path)
     # 可以选择 ['5l', '5s', '5m', '5x'], 跟随训练
     yolov5_type = "5l"
     image_shape = (640, 640, 3)
-    num_class = 91
-    # num_class = 3
+    # num_class = 91
+    num_class = 3
     batch_size = 1
 
     # 这里anchor归一化到[0,1]区间
@@ -47,18 +47,18 @@ def main():
     #     include_keypoint=False
     # )
     # 类别名, 也可以自己提供一个数组, 不通过coco
-    classes = ['none', 'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
-               'train', 'truck', 'boat', 'traffic light', 'fire hydrant', 'none', 'stop sign',
-               'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse', 'sheep', 'cow', 'elephant',
-               'bear', 'zebra', 'giraffe', 'none', 'backpack', 'umbrella', 'none', 'none', 'handbag',
-               'tie', 'suitcase', 'frisbee', 'skis', 'snowboard', 'sports ball', 'kite', 'baseball bat',
-               'baseball glove', 'skateboard', 'surfboard', 'tennis racket', 'bottle', 'none', 'wine glass',
-               'cup', 'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple', 'sandwich', 'orange', 'broccoli',
-               'carrot', 'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch', 'potted plant', 'bed', 'none',
-               'dining table', 'none', 'none', 'toilet', 'none', 'tv', 'laptop', 'mouse', 'remote', 'keyboard',
-               'cell phone', 'microwave', 'oven', 'toaster', 'sink', 'refrigerator', 'none', 'book', 'clock',
-               'vase', 'scissors', 'teddy bear', 'hair drier', 'toothbrush']
-    # classes = ['_background_', 'cat', 'dog']
+    # classes = ['none', 'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
+    #            'train', 'truck', 'boat', 'traffic light', 'fire hydrant', 'none', 'stop sign',
+    #            'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse', 'sheep', 'cow', 'elephant',
+    #            'bear', 'zebra', 'giraffe', 'none', 'backpack', 'umbrella', 'none', 'none', 'handbag',
+    #            'tie', 'suitcase', 'frisbee', 'skis', 'snowboard', 'sports ball', 'kite', 'baseball bat',
+    #            'baseball glove', 'skateboard', 'surfboard', 'tennis racket', 'bottle', 'none', 'wine glass',
+    #            'cup', 'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple', 'sandwich', 'orange', 'broccoli',
+    #            'carrot', 'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch', 'potted plant', 'bed', 'none',
+    #            'dining table', 'none', 'none', 'toilet', 'none', 'tv', 'laptop', 'mouse', 'remote', 'keyboard',
+    #            'cell phone', 'microwave', 'oven', 'toaster', 'sink', 'refrigerator', 'none', 'book', 'clock',
+    #            'vase', 'scissors', 'teddy bear', 'hair drier', 'toothbrush']
+    classes = ['_background_', 'cat', 'dog']
 
     yolo = Yolo(
         model_path=model_path,
@@ -74,10 +74,11 @@ def main():
 
     # 预测结果: [nms_nums, (x1, y1, x2, y2, conf, cls)]
     predicts = yolo.predict(image)
+    print(predicts)
     if predicts.shape[0]:
         pred_image = image.copy()
         for box_obj_cls in predicts[0]:
-            if box_obj_cls[4] > 0.5:
+            if box_obj_cls[4] > 0.1:
                 label = int(box_obj_cls[5])
                 class_name = classes[label]
                 xmin, ymin, xmax, ymax = box_obj_cls[:4]
