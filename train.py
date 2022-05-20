@@ -24,7 +24,7 @@ def main():
     num_class = 3
     batch_size = 4
     # -1表示全部数据参与训练
-    train_img_nums = -1
+    train_img_nums = 10
 
     # 这里anchor归一化到[0,1]区间
     anchors = np.array([[10, 13], [16, 30], [33, 23],
@@ -73,7 +73,7 @@ def main():
 
     # data = coco_data.next_batch()
     for epoch in range(epochs):
-        # if epoch % 20 == 0 and epoch != 0:
+        # if epoch % 40 == 0 and epoch != 0:
         #     yolov5.save_weights(log_dir + '/yolov5-tf-{}.h5'.format(epoch))
             # 保存为pb格式
             # yolov5.save(log_dir + '/yolov5-tf-{}.pb'.format(epoch), save_format='tf')
@@ -150,6 +150,7 @@ def main():
                     tf.summary.image("imgs/gt,pred,epoch{}".format(epoch), summ_imgs,
                                      step=epoch * coco_data.total_batch_size + batch)
     yolov5.save_weights(log_dir + '/yolov5-tf-{}.h5'.format(epochs))
+    yolov5.save(log_dir + '/yolov5-tf-{}.pb'.format(epochs), save_format='tf')
 
 
 if __name__ == "__main__":

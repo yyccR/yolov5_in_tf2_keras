@@ -84,6 +84,7 @@ class Yolo:
             assert model_path, "Inference mode need the model_path!"
             assert os.path.isfile(model_path), "Can't find the model weight file!"
             self.yolov5.load_weights(model_path)
+            # self.yolov5 = tf.keras.models.load_model(model_path)
             # self.load_weights(model_path, by_name=True)
             print("loading model weight from {}".format(model_path))
 
@@ -138,7 +139,8 @@ class Yolo:
                 pred_cls = tf.keras.layers.Softmax()(pred[..., 5:])
                 cur_layer_pred_res = tf.keras.layers.Concatenate(axis=-1)([pred_xy, pred_wh, pred_obj, pred_cls])
 
-                cur_layer_pred_res = tf.reshape(cur_layer_pred_res, [self.batch_size, -1, self.num_class + 5])
+                # cur_layer_pred_res = tf.reshape(cur_layer_pred_res, [self.batch_size, -1, self.num_class + 5])
+                cur_layer_pred_res = tf.keras.layers.Reshape([-1, self.num_class + 5])(cur_layer_pred_res)
                 detect_res.append(cur_layer_pred_res)
             else:
                 detect_res.append(pred)
@@ -214,7 +216,8 @@ class Yolo:
         return np.array(output)
 
     def build_graph(self, is_training):
-        inputs = tf.keras.layers.Input(shape=self.image_shape, batch_size=self.batch_size)
+        # inputs = tf.keras.layers.Input(shape=self.image_shape, batch_size=self.batch_size)
+        inputs = tf.keras.layers.Input(shape=self.image_shape)
         yolo_body_outputs = self.base_net(inputs)
         outputs = self.yolo_head(yolo_body_outputs, is_training=is_training)
         # outputs = self.yolo_head(yolo_body_outputs, is_training=True)
