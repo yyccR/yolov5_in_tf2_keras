@@ -41,6 +41,7 @@ class Yolo:
         self.yolo_max_boxes = yolo_max_boxes
         self.yolo_iou_threshold = yolo_iou_threshold
         self.yolo_conf_threshold = yolo_conf_threshold
+        self.model_path = model_path
 
         self.num_class = num_class
         self.anchors = anchors
@@ -253,12 +254,13 @@ class Yolo:
             # 预测, [batch, -1, num_class + 5]
             # outputs = self.yolov5.predict(inputs)
             outputs = self.yolov5.predict(inputs)
+            # self.yolov5.load_weights(self.model_path)
             # outputs = self.yolov5(inputs, training=True)
             # outputs = self.yolo_head(outputs, is_training=False)
             # 非极大抑制, [nms_nums, (x1, y1, x2, y2, conf, cls)]
             # nms_outputs = self.nms(outputs.numpy(), iou_thres=0.3)[0]
-            # nms_outputs = self.nms(outputs.numpy())[0]
             nms_outputs = self.nms(outputs)
+            # nms_outputs = self.nms(outputs)
             if not nms_outputs.shape[0]:
                 continue
             nms_outputs = np.array(nms_outputs[0], dtype=np.float32)
