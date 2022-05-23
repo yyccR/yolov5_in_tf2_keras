@@ -16,6 +16,63 @@ from data.visual_ops import draw_bounding_box
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 
+class YoloHead(tf.keras.layers.Layer):
+    def __init__(self, image_shape, num_class, is_training, strides, anchors, anchors_masks):
+        super(YoloHead, self).__init__()
+        self.image_shape = image_shape
+        self.num_class = num_class
+        self.is_training = is_training
+        self.strides = strides
+        self.anchors = anchors
+        self.anchors_masks = anchors_masks
+        self.grid = []
+        self.anchor_grid = []
+        for i, stride in enumerate(strides):
+            grid, anchor_grid = self._make_grid(self.image_shape[0] // stride, self.image_shape[1] // stride, i)
+            self.grid.append(grid)
+            self.anchor_grid.append(anchor_grid)
+
+    def call(self, inputs, *args, **kwargs):
+        detect_res = []
+        for i, pred in enumerate(inputs):
+            if not self.is_training:
+                # f_shape = tf.shape(pred)
+                # if len(self.grid) < self.anchor_masks.shape[0]:
+                #     grid, anchor_grid = self._make_grid(f_shape[1], f_shape[2], i)
+                #     self.grid.append(grid)
+                #     self.anchor_grid.append(anchor_grid)
+                # 这里把输出的值域从[0,1]调整到[0, image_shape]
+                pred_xy = (tf.sigmoid(pred[..., 0:2]) * 2. - 0.5 + self.grid[i]) * self.strides[i]
+                pred_wh = (tf.sigmoid(pred[..., 2:4]) * 2) ** 2 * self.anchor_grid[i]
+                # print(self.grid)
+                pred_obj = tf.sigmoid(pred[..., 4:5])
+                pred_cls = tf.keras.layers.Softmax()(pred[..., 5:])
+                cur_layer_pred_res = tf.keras.layers.Concatenate(axis=-1)([pred_xy, pred_wh, pred_obj, pred_cls])
+
+                # cur_layer_pred_res = tf.reshape(cur_layer_pred_res, [self.batch_size, -1, self.num_class + 5])
+                cur_layer_pred_res = tf.keras.layers.Reshape([-1, self.num_class + 5])(cur_layer_pred_res)
+                detect_res.append(cur_layer_pred_res)
+            else:
+                detect_res.append(pred)
+        return detect_res if self.is_training else tf.concat(detect_res, axis=1)
+
+    def _make_grid(self, h, w, i):
+        cur_layer_anchors = self.anchors[self.anchors_masks[i]] * np.array([[self.image_shape[1], self.image_shape[0]]])
+        num_anchors_per_layer = len(cur_layer_anchors)
+        yv, xv = tf.meshgrid(tf.range(h), tf.range(w))
+        grid = tf.stack((xv, yv), axis=2)
+        # 用来计算中心点的grid cell左上角坐标
+        grid = tf.tile(tf.reshape(grid, [1, h, w, 1, 2]), [1, 1, 1, num_anchors_per_layer, 1])
+        grid = tf.cast(grid, tf.float32)
+        # anchor_grid = tf.reshape(cur_layer_anchors * self.strides[i], [1, 1, 1, num_anchors_per_layer, 2])
+        anchor_grid = tf.reshape(cur_layer_anchors, [1, 1, 1, num_anchors_per_layer, 2])
+        # 用来计算宽高的anchor w/h
+        anchor_grid = tf.tile(anchor_grid, [1, h, w, 1, 1])
+        anchor_grid = tf.cast(anchor_grid, tf.float32)
+
+        return grid, anchor_grid
+
+
 class Yolo:
 
     def __init__(self,
@@ -84,7 +141,7 @@ class Yolo:
         if not is_training:
             assert model_path, "Inference mode need the model_path!"
             assert os.path.isfile(model_path), "Can't find the model weight file!"
-            self.yolov5.load_weights(model_path)
+            self.yolov5.load_weights(model_path, by_name=True)
             # self.yolov5 = tf.keras.models.load_model(model_path)
             # self.load_weights(model_path, by_name=True)
             print("loading model weight from {}".format(model_path))
@@ -196,8 +253,9 @@ class Yolo:
             # Detections matrix [n, (x1, y1, x2, y2, conf, cls)]
             max_cls_ids = np.array(predict[:, 5:].argmax(axis=1), dtype=np.float32)
             max_cls_score = predict[:, 5:].max(axis=1)
+            print(np.max(max_cls_score), np.min(max_cls_score))
             predict = np.concatenate([box, max_cls_score[:, None], max_cls_ids[:, None]], axis=1)[
-                np.reshape(max_cls_score > conf_thres, (-1,))]
+                np.reshape(max_cls_score > 0.1, (-1,))]
 
             n = predict.shape[0]
             if not n:
@@ -220,8 +278,17 @@ class Yolo:
         # inputs = tf.keras.layers.Input(shape=self.image_shape, batch_size=self.batch_size)
         inputs = tf.keras.layers.Input(shape=self.image_shape)
         yolo_body_outputs = self.base_net(inputs)
-        outputs = self.yolo_head(yolo_body_outputs, is_training=is_training)
+
+        # outputs = self.yolo_head(yolo_body_outputs, is_training=is_training)
         # outputs = self.yolo_head(yolo_body_outputs, is_training=True)
+        outputs = YoloHead(
+            image_shape=self.image_shape,
+            num_class=self.num_class,
+            is_training=self.is_training,
+            strides=self.strides,
+            anchors=self.anchors,
+            anchors_masks=self.anchor_masks
+        )(yolo_body_outputs)
         # if not self.is_training:
         #     outputs = self.nms(outputs, iou_thres=self.yolo_iou_threshold, conf_thres=self.yolo_conf_threshold)
         model = tf.keras.models.Model(inputs=inputs, outputs=outputs)
@@ -256,10 +323,18 @@ class Yolo:
             outputs = self.yolov5.predict(inputs)
             # self.yolov5.load_weights(self.model_path)
             # outputs = self.yolov5(inputs, training=True)
+            # outputs = YoloHead(image_shape=self.image_shape,
+            #                    num_class=self.num_class,
+            #                    is_training=self.is_training,
+            #                    strides=self.strides,
+            #                    anchors=self.anchors,
+            #                    anchors_masks=self.anchor_masks)
             # outputs = self.yolo_head(outputs, is_training=False)
             # 非极大抑制, [nms_nums, (x1, y1, x2, y2, conf, cls)]
             # nms_outputs = self.nms(outputs.numpy(), iou_thres=0.3)[0]
+            # print(np.max(outputs[:,:,4]),np.min(outputs[:,:,4]))
             nms_outputs = self.nms(outputs)
+            print(nms_outputs.shape)
             # nms_outputs = self.nms(outputs)
             if not nms_outputs.shape[0]:
                 continue
@@ -287,7 +362,7 @@ if __name__ == "__main__":
                         [116, 90], [156, 198], [373, 326]]) / image_shape[0]
     anchor_masks = np.array([[0, 1, 2], [3, 4, 5], [6, 7, 8]], dtype=np.int8)
     anchors = np.array(anchors, dtype=np.float32)
-    yolo = Yolo(num_class=90, batch_size=1, is_training=True,anchors=anchors,anchor_masks=anchor_masks)
+    yolo = Yolo(num_class=90, batch_size=1, is_training=True, anchors=anchors, anchor_masks=anchor_masks)
     yolo.yolov5.summary(line_length=200)
     #
     # from tensorflow.python.ops import summary_ops_v2
