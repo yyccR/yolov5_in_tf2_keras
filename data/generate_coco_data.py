@@ -22,7 +22,7 @@ class CoCoDataGenrator:
                  include_crowd=False,
                  include_mask=False,
                  include_keypoint=False,
-                 need_down_image=False,
+                 need_down_image=True,
                  download_image_path=os.path.dirname(os.path.abspath(__file__)) + "/" + './coco_2017_val_images/',
                  ):
         # 设置要训练的图片数, -1表示全部
@@ -107,8 +107,8 @@ class CoCoDataGenrator:
         for img_id in batch_img_ids:
             # {"img":, "bboxes":, "labels":, "masks":, "key_points":}
             data = self._data_generation(image_id=img_id)
-            if len(np.shape(data['img'])) > 0:
-                batch_imgs.append(data['img'])
+            if len(np.shape(data['imgs'])) > 0:
+                batch_imgs.append(data['imgs'])
                 batch_labels.append(data['labels'])
                 batch_bboxes.append(data['bboxes'])
                 valid_nums.append(data['valid_nums'])
@@ -246,7 +246,7 @@ class CoCoDataGenrator:
 
         # 输出包含5个东西, 不需要则为空
         outputs = {
-            "img": [],
+            "imgs": [],
             "labels": [],
             "bboxes": [],
             "masks": [],
@@ -341,7 +341,7 @@ class CoCoDataGenrator:
         bboxes = np.array(bboxes, dtype=np.int16)
         img_resize, bboxes_resize = self._resize_im(origin_im=img, bboxes=bboxes)
 
-        outputs['img'] = img_resize
+        outputs['imgs'] = img_resize
         outputs['labels'] = labels
         outputs['bboxes'] = bboxes_resize
         outputs['valid_nums'] = valid_nums
@@ -356,25 +356,30 @@ if __name__ == "__main__":
     # file = "./yanhua/annotations.json"
     coco = CoCoDataGenrator(
         coco_annotation_file=file,
-        train_img_nums=-1,
-        include_mask=False,
+        train_img_nums=8,
+        include_mask=True,
         include_keypoint=False,
-        batch_size=1)
+        batch_size=8)
 
-    data = coco.next_batch()
+    # data = coco.next_batch()
+    data = coco._data_generation(289343)
     gt_imgs = data['imgs']
     gt_boxes = data['bboxes']
     gt_classes = data['labels']
     gt_masks = data['masks']
     valid_nums = data['valid_nums']
 
-    img = gt_imgs[-1]
-    for i in range(valid_nums[-1]):
+    img = gt_imgs if len(np.shape(gt_imgs)) == 3 else gt_imgs[-1]
+    valid_num = [valid_nums] if type(valid_nums) == int else valid_nums
+    gt_classes = [gt_classes] if len(np.shape(gt_classes)) == 1 else gt_classes
+    gt_boxes = [gt_boxes] if len(np.shape(gt_boxes)) == 2 else gt_classes
+    gt_masks = [gt_masks] if len(np.shape(gt_masks)) == 3 else gt_masks
+    for i in range(valid_num[-1]):
         label = gt_classes[-1][i]
         label_name = coco.coco.cats[label]['name']
         x1, y1, x2, y2 = gt_boxes[-1][i]
-        # mask = gt_masks[-1][:, :, i]
-        # img = draw_instance(img, mask)
+        mask = gt_masks[-1][:, :, i]
+        img = draw_instance(img, mask)
         img = draw_bounding_box(img, label_name, label, x1, y1, x2, y2)
     cv2.imshow("", img)
     cv2.waitKey(0)
