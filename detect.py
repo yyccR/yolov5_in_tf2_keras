@@ -17,13 +17,13 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
 def main():
     # model_path = "h5模型路径, 默认在 ./logs/yolov5-tf-300.h5"
-    model_path = "./logs/yolov5-tf-50.h5"
+    model_path = "./logs/yolov5-tf-280.h5"
     # image_path = "提供你要测试的图片路径"
-    image_path = "./data/tmp/traffic_road.jpg"
-    # image_path = "./data/coco_2017_val_images/335529.jpg"
+    # image_path = "./data/tmp/traffic_road.jpg"
+    image_path = "./data/coco_2017_val_images/289343.jpg"
     image = cv2.imread(image_path)
     # 可以选择 ['5l', '5s', '5m', '5x'], 跟随训练
-    yolov5_type = "5l"
+    yolov5_type = "5s"
     image_shape = (640, 640, 3)
     num_class = 91
     # num_class = 3
@@ -32,7 +32,7 @@ def main():
     # 这里anchor归一化到[0,1]区间
     anchors = np.array([[10, 13], [16, 30], [33, 23],
                         [30, 61], [62, 45], [59, 119],
-                        [116, 90], [156, 198], [373, 326]]) / image_shape[0]
+                        [116, 90], [156, 198], [373, 326]]) / 640.
     anchors = np.array(anchors, dtype=np.float32)
     # 分别对应1/8, 1/16, 1/32预测输出层
     anchor_masks = np.array([[0, 1, 2], [3, 4, 5], [6, 7, 8]], dtype=np.int8)
@@ -79,7 +79,7 @@ def main():
     if predicts.shape[0]:
         pred_image = image.copy()
         for box_obj_cls in predicts[0]:
-            if box_obj_cls[4] > 0.1:
+            if box_obj_cls[4] > 0.8:
                 label = int(box_obj_cls[5])
                 class_name = classes[label]
                 xmin, ymin, xmax, ymax = box_obj_cls[:4]

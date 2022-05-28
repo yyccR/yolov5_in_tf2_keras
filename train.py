@@ -18,7 +18,7 @@ def main():
     epochs = 300
     log_dir = './logs'
     # 可以选择 ['5l', '5s', '5m', '5x']
-    yolov5_type = "5l"
+    yolov5_type = "5s"
     image_shape = (640, 640, 3)
     num_class = 91
     # num_class = 3
@@ -29,7 +29,7 @@ def main():
     # 这里anchor归一化到[0,1]区间
     anchors = np.array([[10, 13], [16, 30], [33, 23],
                         [30, 61], [62, 45], [59, 119],
-                        [116, 90], [156, 198], [373, 326]]) / image_shape[0]
+                        [116, 90], [156, 198], [373, 326]]) / 640.
     anchors = np.array(anchors, dtype=np.float32)
     # 分别对应1/8, 1/16, 1/32预测输出层
     anchor_masks = np.array([[0, 1, 2], [3, 4, 5], [6, 7, 8]], dtype=np.int8)
@@ -59,7 +59,8 @@ def main():
     )
     yolov5 = yolo.yolov5
     yolov5.summary(line_length=200)
-    optimizer = tf.keras.optimizers.Adam(learning_rate=0.0001)
+    optimizer = tf.keras.optimizers.Adam(learning_rate=0.001, beta_1=0.9, beta_2=0.99)
+    # optimizer = tf.keras.optimizers.SGD(learning_rate=0.01)
 
     loss_fn = ComputeLoss(
         image_shape=image_shape,

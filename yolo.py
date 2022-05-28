@@ -137,7 +137,7 @@ class Yolo:
 
         self.grid = []
         self.anchor_grid = []
-        self.yolov5 = self.build_graph(is_training=self.is_training)
+        self.yolov5 = self.build_graph()
         if not is_training:
             assert model_path, "Inference mode need the model_path!"
             assert os.path.isfile(model_path), "Can't find the model weight file!"
@@ -220,7 +220,7 @@ class Yolo:
 
         return grid, anchor_grid
 
-    def nms(self, predicts, conf_thres=0.25, iou_thres=0.2, max_det=300, max_nms=3000):
+    def nms(self, predicts, conf_thres=0.45, iou_thres=0.2, max_det=300, max_nms=3000):
         """ 原yolov5简化版nms, 不用multi label, 不做merge box
 
         :param predicts:
@@ -274,7 +274,7 @@ class Yolo:
 
         return np.array(output)
 
-    def build_graph(self, is_training):
+    def build_graph(self):
         # inputs = tf.keras.layers.Input(shape=self.image_shape, batch_size=self.batch_size)
         inputs = tf.keras.layers.Input(shape=self.image_shape)
         yolo_body_outputs = self.base_net(inputs)

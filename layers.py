@@ -45,7 +45,7 @@ class Conv(tf.keras.layers.Layer):
 
     def call(self, inputs, training=None, *args, **kwargs):
         x = self.conv(inputs)
-        x = self.bn(x)
+        x = self.bn(x, training=False)
         if self.act:
             x = tf.keras.activations.swish(x)
         return x
