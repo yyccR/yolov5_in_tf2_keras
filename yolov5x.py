@@ -27,11 +27,11 @@ class Yolov5x:
         x = Conv(out_channels=160, kernel_size=3, stride=2, padding='same')(x)
         x = C3(out_channels=160, num_bottles=4)(x)
         # 1/8
-        x = Conv(out_channels=320, kernel_size=3, stride=2, padding='same')(x)
-        p3 = x = C3(out_channels=320, num_bottles=8)(x)
+        p3 = x = Conv(out_channels=320, kernel_size=3, stride=2, padding='same')(x)
+        x = C3(out_channels=320, num_bottles=8)(x)
         # 1/16
-        x = Conv(out_channels=640, kernel_size=3, stride=2, padding='same')(x)
-        p4 = x = C3(out_channels=640, num_bottles=12)(x)
+        p4 = x = Conv(out_channels=640, kernel_size=3, stride=2, padding='same')(x)
+        x = C3(out_channels=640, num_bottles=12)(x)
         # 1/32
         x = Conv(out_channels=1280, kernel_size=3, stride=2, padding='same')(x)
         x = C3(out_channels=1280, num_bottles=4)(x)
