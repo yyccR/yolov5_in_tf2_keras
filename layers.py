@@ -41,13 +41,14 @@ class Conv(tf.keras.layers.Layer):
             use_bias=False
         )
         self.bn = tf.keras.layers.BatchNormalization(momentum=0.75)
-        # self.relu = tf.keras.layers.ReLU()
+        self.relu = tf.keras.layers.ReLU()
 
     def call(self, inputs, training=None, *args, **kwargs):
         x = self.conv(inputs)
         x = self.bn(x)
         if self.act:
-            x = tf.keras.activations.swish(x)
+            # x = tf.keras.activations.swish(x)
+            x = self.relu(x)
         return x
 
 

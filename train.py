@@ -19,12 +19,26 @@ def main():
     log_dir = './logs'
     # 可以选择 ['5l', '5s', '5m', '5x']
     yolov5_type = "5s"
-    image_shape = (640, 640, 3)
-    num_class = 91
-    # num_class = 3
-    batch_size = 4
+    image_shape = (320, 320, 3)
+    # num_class = 91
+    num_class = 2
+    batch_size = 8
     # -1表示全部数据参与训练
     train_img_nums = -1
+
+    # 类别名, 也可以自己提供一个数组, 不通过coco
+    # classes = ['none', 'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
+    #            'train', 'truck', 'boat', 'traffic light', 'fire hydrant', 'none', 'stop sign',
+    #            'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse', 'sheep', 'cow', 'elephant',
+    #            'bear', 'zebra', 'giraffe', 'none', 'backpack', 'umbrella', 'none', 'none', 'handbag',
+    #            'tie', 'suitcase', 'frisbee', 'skis', 'snowboard', 'sports ball', 'kite', 'baseball bat',
+    #            'baseball glove', 'skateboard', 'surfboard', 'tennis racket', 'bottle', 'none', 'wine glass',
+    #            'cup', 'fork', 'knife', 'spoon', 'bowl', 'banana', 'apple', 'sandwich', 'orange', 'broccoli',
+    #            'carrot', 'hot dog', 'pizza', 'donut', 'cake', 'chair', 'couch', 'potted plant', 'bed', 'none',
+    #            'dining table', 'none', 'none', 'toilet', 'none', 'tv', 'laptop', 'mouse', 'remote', 'keyboard',
+    #            'cell phone', 'microwave', 'oven', 'toaster', 'sink', 'refrigerator', 'none', 'book', 'clock',
+    #            'vase', 'scissors', 'teddy bear', 'hair drier', 'toothbrush']
+    # classes = ['cat', 'dog']
 
     # 这里anchor归一化到[0,1]区间
     anchors = np.array([[10, 13], [16, 30], [33, 23],
@@ -37,7 +51,8 @@ def main():
     summary_writer = tf.summary.create_file_writer(log_dir)
     # data generator
     coco_data = CoCoDataGenrator(
-        coco_annotation_file='./data/instances_val2017.json',
+        coco_annotation_file='./data/cat_dog_face_data/train_annotations.json',
+        # coco_annotation_file='./data/instances_val2017.json',
         # coco_annotation_file='./data/tmp/annotations.json',
         train_img_nums=train_img_nums,
         img_shape=image_shape,
@@ -46,7 +61,7 @@ def main():
         include_mask=False,
         include_crowd=False,
         include_keypoint=False,
-        need_down_image=True
+        need_down_image=False
     )
     yolo = Yolo(
         image_shape=image_shape,
@@ -141,6 +156,7 @@ def main():
                             label = int(box_obj_cls[5])
                             if coco_data.coco.cats.get(label):
                                 class_name = coco_data.coco.cats[label]['name']
+                                # class_name = classes[label]
                                 xmin, ymin, xmax, ymax = box_obj_cls[:4]
                                 pred_img = draw_bounding_box(pred_img, class_name, box_obj_cls[4], int(xmin), int(ymin),
                                                              int(xmax), int(ymax))

@@ -14,13 +14,13 @@ from loss import ComputeLoss
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 
-
 def main():
     # model_path = "h5模型路径, 默认在 ./logs/yolov5-tf-300.h5"
-    model_path = "./logs/yolov5-tf-280.h5"
+    model_path = "./logs/yolov5-tf-100.h5"
     # image_path = "提供你要测试的图片路径"
     # image_path = "./data/tmp/traffic_road.jpg"
     image_path = "./data/coco_2017_val_images/289343.jpg"
+    # image_path = "./data/tmp/Cats_Test49.jpg"
     image = cv2.imread(image_path)
     # 可以选择 ['5l', '5s', '5m', '5x'], 跟随训练
     yolov5_type = "5s"
@@ -79,7 +79,7 @@ def main():
     if predicts.shape[0]:
         pred_image = image.copy()
         for box_obj_cls in predicts[0]:
-            if box_obj_cls[4] > 0.8:
+            if box_obj_cls[4] > 0.5:
                 label = int(box_obj_cls[5])
                 class_name = classes[label]
                 xmin, ymin, xmax, ymax = box_obj_cls[:4]
