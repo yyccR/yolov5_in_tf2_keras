@@ -58,18 +58,21 @@ class Yolov5m:
 
         # output tensor [batch, grid, grid, anchors, 5 + num_classes]
         p7 = tf.keras.layers.Conv2D((self.num_class + 5) * self.anchors_per_location, kernel_size=1)(p7)
-        p7_shape = tf.shape(p7)
-        p7 = tf.reshape(p7, [self.batch_size, p7_shape[1], p7_shape[2], self.anchors_per_location, self.num_class + 5])
+        # p7_shape = tf.shape(p7)
+        # p7 = tf.reshape(p7, [self.batch_size, p7_shape[1], p7_shape[2], self.anchors_per_location, self.num_class + 5])
+        p7 = tf.keras.layers.Reshape([self.image_shape[0]//8, self.image_shape[1]//8, self.anchors_per_location, self.num_class + 5])(p7)
 
         # [batch, grid, grid, anchors, 5 + num_classes]
         p8 = tf.keras.layers.Conv2D((self.num_class + 5) * self.anchors_per_location, kernel_size=1)(p8)
-        p8_shape = tf.shape(p8)
-        p8 = tf.reshape(p8, [self.batch_size, p8_shape[1], p8_shape[2], self.anchors_per_location, self.num_class + 5])
+        # p8_shape = tf.shape(p8)
+        # p8 = tf.reshape(p8, [self.batch_size, p8_shape[1], p8_shape[2], self.anchors_per_location, self.num_class + 5])
+        p8 = tf.keras.layers.Reshape([self.image_shape[0]//16, self.image_shape[1]//16, self.anchors_per_location, self.num_class + 5])(p8)
 
         # [batch, grid, grid, anchors, 5 + num_classes]
         p9 = tf.keras.layers.Conv2D((self.num_class + 5) * self.anchors_per_location, kernel_size=1)(p9)
-        p9_shape = tf.shape(p9)
-        p9 = tf.reshape(p9, [self.batch_size, p9_shape[1], p9_shape[2], self.anchors_per_location, self.num_class + 5])
+        # p9_shape = tf.shape(p9)
+        # p9 = tf.reshape(p9, [self.batch_size, p9_shape[1], p9_shape[2], self.anchors_per_location, self.num_class + 5])
+        p9 = tf.keras.layers.Reshape([self.image_shape[0]//32, self.image_shape[1]//32, self.anchors_per_location, self.num_class + 5])(p9)
 
         model = tf.keras.models.Model(inputs=inputs, outputs=[p7, p8, p9])
         return model
