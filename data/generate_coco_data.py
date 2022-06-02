@@ -298,7 +298,6 @@ class CoCoDataGenrator:
         #     io.imsave(file_path, im)
         #     print("save image {}".format(file_path))
         # img = cv2.imread(img_file)
-
         img_coco_url_file = str(self.coco.imgs[image_id].get('coco_url', ""))
         img_url_file = str(self.coco.imgs[image_id].get('url', ""))
         img_local_file = str(self.coco.imgs[image_id].get('file_name', "")).encode('unicode_escape').decode()
@@ -352,17 +351,19 @@ class CoCoDataGenrator:
 if __name__ == "__main__":
     from data.visual_ops import draw_bounding_box, draw_instance
 
-    file = "./instances_val2017.json"
+    file = "./cat_dog_face_data/train_annotations.json"
+    # file = "./instances_val2017.json"
     # file = "./yanhua/annotations.json"
     coco = CoCoDataGenrator(
         coco_annotation_file=file,
         train_img_nums=8,
-        include_mask=True,
+        include_mask=False,
         include_keypoint=False,
+        need_down_image=False,
         batch_size=8)
 
     # data = coco.next_batch()
-    data = coco._data_generation(289343)
+    data = coco._data_generation(2)
     gt_imgs = data['imgs']
     gt_boxes = data['bboxes']
     gt_classes = data['labels']
@@ -372,14 +373,14 @@ if __name__ == "__main__":
     img = gt_imgs if len(np.shape(gt_imgs)) == 3 else gt_imgs[-1]
     valid_num = [valid_nums] if type(valid_nums) == int else valid_nums
     gt_classes = [gt_classes] if len(np.shape(gt_classes)) == 1 else gt_classes
-    gt_boxes = [gt_boxes] if len(np.shape(gt_boxes)) == 2 else gt_classes
+    gt_boxes = [gt_boxes] if len(np.shape(gt_boxes)) == 2 else gt_boxes
     gt_masks = [gt_masks] if len(np.shape(gt_masks)) == 3 else gt_masks
     for i in range(valid_num[-1]):
-        label = gt_classes[-1][i]
+        label = float(gt_classes[-1][i])
         label_name = coco.coco.cats[label]['name']
         x1, y1, x2, y2 = gt_boxes[-1][i]
-        mask = gt_masks[-1][:, :, i]
-        img = draw_instance(img, mask)
+        # mask = gt_masks[-1][:, :, i]
+        # img = draw_instance(img, mask)
         img = draw_bounding_box(img, label_name, label, x1, y1, x2, y2)
     cv2.imshow("", img)
     cv2.waitKey(0)

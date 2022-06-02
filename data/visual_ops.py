@@ -8,7 +8,7 @@ from PIL import Image, ImageDraw, ImageFont
 def draw_bounding_box(im, cls, scores, x_min, y_min, x_max, y_max, thickness=2, color=(11, 252, 3), txt_size=0.35):
     im_cp = np.array(im.copy(), dtype=np.uint8)
     cv2.rectangle(im_cp, (int(x_min), int(y_min)), (int(x_max), int(y_max)), color=color, thickness=thickness)
-    if cls and scores:
+    if cls and type(scores) == float:
         txt = "{}:{:.3f}".format(cls, scores)
         x_rect_min = int(x_min)
         y_rect_min = int(y_min - int(38 * txt_size))
