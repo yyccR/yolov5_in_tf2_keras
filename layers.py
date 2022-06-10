@@ -40,12 +40,15 @@ class Conv(tf.keras.layers.Layer):
             groups=groups,
             use_bias=False
         )
-        self.bn = tf.keras.layers.BatchNormalization(momentum=0.75)
+        self.bn = tf.keras.layers.BatchNormalization(momentum=0.95)
+        # self.bn = tf.keras.layers.BatchNormalization(momentum=0.1)
         self.relu = tf.keras.layers.ReLU()
+        # self.leak_relu = tf.keras.layers.LeakyReLU()
+        # self.elu = tf.keras.layers.ELU()
 
-    def call(self, inputs, training=None, *args, **kwargs):
+    def call(self, inputs, *args, **kwargs):
         x = self.conv(inputs)
-        x = self.bn(x)
+        x = self.bn(x, training=False)
         if self.act:
             # x = tf.keras.activations.swish(x)
             x = self.relu(x)
