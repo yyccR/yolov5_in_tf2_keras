@@ -8,22 +8,21 @@ from PIL import Image, ImageDraw, ImageFont
 def draw_bounding_box(im, cls, scores, x_min, y_min, x_max, y_max, thickness=2, color=(11, 252, 3), txt_size=0.35):
     im_cp = np.array(im.copy(), dtype=np.uint8)
     cv2.rectangle(im_cp, (int(x_min), int(y_min)), (int(x_max), int(y_max)), color=color, thickness=thickness)
-    if cls and type(scores) == float:
-        txt = "{}:{:.3f}".format(cls, scores)
-        x_rect_min = int(x_min)
-        y_rect_min = int(y_min - int(38 * txt_size))
-        x_rect_max = int(x_min + int(len(txt) * 19 * txt_size))
-        y_rect_max = int(y_min)
-        x_txt = int(x_min)
-        y_txt = int(y_min - 5)
-        if y_rect_min < 0:
-            y_rect_min = int(y_max)
-            y_rect_max = int(y_max + int(38 * txt_size))
-            y_txt = int(y_max + 5)
-        # draw text box
-        cv2.rectangle(im_cp, (x_rect_min, y_rect_min), (x_rect_max, y_rect_max), (11, 252, 3), -1)
-        # draw txt
-        cv2.putText(im_cp, txt, (x_txt, y_txt), cv2.FONT_HERSHEY_SIMPLEX, txt_size, (0, 0, 0))
+    txt = "{}:{:.3f}".format(cls, scores)
+    x_rect_min = int(x_min)
+    y_rect_min = int(y_min - int(38 * txt_size))
+    x_rect_max = int(x_min + int(len(txt) * 19 * txt_size))
+    y_rect_max = int(y_min)
+    x_txt = int(x_min)
+    y_txt = int(y_min - 5)
+    if y_rect_min < 0:
+        y_rect_min = int(y_max)
+        y_rect_max = int(y_max + int(38 * txt_size))
+        y_txt = int(y_max + 5)
+    # draw text box
+    cv2.rectangle(im_cp, (x_rect_min, y_rect_min), (x_rect_max, y_rect_max), (11, 252, 3), -1)
+    # draw txt
+    cv2.putText(im_cp, txt, (x_txt, y_txt), cv2.FONT_HERSHEY_SIMPLEX, txt_size, (0, 0, 0))
     return im_cp
 
 
