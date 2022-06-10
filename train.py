@@ -3,6 +3,7 @@ import sys
 sys.path.append('../yolov5_in_tf2_keras')
 
 import os
+import tqdm
 import numpy as np
 import random
 import tensorflow as tf
@@ -10,19 +11,20 @@ from data.visual_ops import draw_bounding_box
 from data.generate_coco_data import CoCoDataGenrator
 from yolo import Yolo
 from loss import ComputeLoss
+from val import val
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 
 def main():
     epochs = 300
-    log_dir = './logs'
+    log_dir = './logs_elu_adam_0.0001'
     # 可以选择 ['5l', '5s', '5m', '5x']
     yolov5_type = "5s"
     image_shape = (320, 320, 3)
     # num_class = 91
     num_class = 2
-    batch_size = 8
+    batch_size = 20
     # -1表示全部数据参与训练
     train_img_nums = -1
 
@@ -38,7 +40,7 @@ def main():
     #            'dining table', 'none', 'none', 'toilet', 'none', 'tv', 'laptop', 'mouse', 'remote', 'keyboard',
     #            'cell phone', 'microwave', 'oven', 'toaster', 'sink', 'refrigerator', 'none', 'book', 'clock',
     #            'vase', 'scissors', 'teddy bear', 'hair drier', 'toothbrush']
-    # classes = ['cat', 'dog']
+    classes = ['cat', 'dog']
 
     # 这里anchor归一化到[0,1]区间
     anchors = np.array([[10, 13], [16, 30], [33, 23],
@@ -63,6 +65,21 @@ def main():
         include_keypoint=False,
         need_down_image=False
     )
+    # 验证集
+    val_coco_data = CoCoDataGenrator(
+        coco_annotation_file='./data/cat_dog_face_data/val_annotations.json',
+        # coco_annotation_file='./data/instances_val2017.json',
+        # coco_annotation_file='./data/tmp/annotations.json',
+        train_img_nums=-1,
+        img_shape=image_shape,
+        batch_size=batch_size,
+        max_instances=num_class,
+        include_mask=False,
+        include_crowd=False,
+        include_keypoint=False,
+        need_down_image=False
+    )
+
     yolo = Yolo(
         image_shape=image_shape,
         batch_size=batch_size,
@@ -72,10 +89,11 @@ def main():
         anchor_masks=anchor_masks,
         net_type=yolov5_type
     )
-    yolov5 = yolo.yolov5
-    yolov5.summary(line_length=200)
-    optimizer = tf.keras.optimizers.Adam(learning_rate=0.001, beta_1=0.9, beta_2=0.99)
+    yolo.yolov5.summary(line_length=200)
+    optimizer = tf.keras.optimizers.Adam(learning_rate=0.0001)
     # optimizer = tf.keras.optimizers.SGD(learning_rate=0.01)
+    # optimizer = tf.keras.optimizers.Adadelta()
+    # optimizer = tf.keras.optimizers.Nadam()
 
     loss_fn = ComputeLoss(
         image_shape=image_shape,
@@ -88,13 +106,11 @@ def main():
         iou_ignore_thres=0.5
     )
 
+    pre_mAP = 0.
     # data = coco_data.next_batch()
     for epoch in range(epochs):
-        if epoch % 20 == 0 and epoch != 0:
-            yolov5.save_weights(log_dir + '/yolov5-tf-{}.h5'.format(epoch))
-            # 保存为pb格式
-            # yolov5.save(log_dir + '/yolov5-tf-{}.pb'.format(epoch), save_format='tf')
-        for batch in range(coco_data.total_batch_size):
+        train_progress_bar = tqdm.tqdm(range(coco_data.total_batch_size), desc="train epoch {}/{}".format(epoch, epochs-1), ncols=100)
+        for batch in train_progress_bar:
             with tf.GradientTape() as tape:
                 data = coco_data.next_batch()
                 valid_nums = data['valid_nums']
@@ -102,26 +118,32 @@ def main():
                 gt_boxes = np.array(data['bboxes'] / image_shape[0], dtype=np.float32)
                 gt_classes = data['labels']
 
-                print("-------epoch {}, step {}, total step {}--------".format(epoch, batch,
-                                                                               epoch * coco_data.total_batch_size + batch))
-                print("current data index: ",
-                      coco_data.img_ids[(coco_data.current_batch_index - 1) * coco_data.batch_size:
-                                        coco_data.current_batch_index * coco_data.batch_size])
-                for i, nums in enumerate(valid_nums):
-                    print("gt boxes: ", gt_boxes[i, :nums, :] * image_shape[0])
-                    print("gt classes: ", gt_classes[i, :nums])
+                # print("-------epoch {}, step {}, total step {}--------".format(epoch, batch,
+                #                                                                epoch * coco_data.total_batch_size + batch))
+                # print("current data index: ",
+                #       coco_data.img_ids[(coco_data.current_batch_index - 1) * coco_data.batch_size:
+                #                         coco_data.current_batch_index * coco_data.batch_size])
+                # for i, nums in enumerate(valid_nums):
+                #     print("gt boxes: ", gt_boxes[i, :nums, :] * image_shape[0])
+                #     print("gt classes: ", gt_classes[i, :nums])
 
-                yolo_preds = yolov5(gt_imgs, training=True)
+                yolo_preds = yolo.yolov5(gt_imgs, training=True)
                 loss_xy, loss_wh, loss_box, loss_obj, loss_cls = loss_fn(yolo_preds, gt_boxes, gt_classes)
 
                 total_loss = loss_box + loss_obj + loss_cls
-                grad = tape.gradient(total_loss, yolov5.trainable_variables)
-                optimizer.apply_gradients(zip(grad, yolov5.trainable_variables))
+                train_progress_bar.set_postfix(ordered_dict={"loss":'{:.5f}'.format(total_loss)})
+
+                grad = tape.gradient(total_loss, yolo.yolov5.trainable_variables)
+                optimizer.apply_gradients(zip(grad, yolo.yolov5.trainable_variables))
                 # print("-------epoch {}---batch {}--------------".format(epoch, batch))
                 # print("loss_box:{}, loss_obj:{}, loss_cls:{}".format(loss_box, loss_obj, loss_cls))
 
                 # Scalar
                 with summary_writer.as_default():
+                    # tf.summary.scalar('loss/xy_loss', loss_xy,
+                    #                   step=epoch * coco_data.total_batch_size + batch)
+                    # tf.summary.scalar('loss/wh_loss', loss_wh,
+                    #                   step=epoch * coco_data.total_batch_size + batch)
                     tf.summary.scalar('loss/box_loss', loss_box,
                                       step=epoch * coco_data.total_batch_size + batch)
                     tf.summary.scalar('loss/object_loss', loss_obj,
@@ -167,8 +189,16 @@ def main():
                 with summary_writer.as_default():
                     tf.summary.image("imgs/gt,pred,epoch{}".format(epoch), summ_imgs,
                                      step=epoch * coco_data.total_batch_size + batch)
-    yolov5.save_weights(log_dir + '/yolov5-tf-{}.h5'.format(epochs))
-    yolov5.save(log_dir + '/yolov5-tf-{}.pb'.format(epochs), save_format='tf')
+        # 这里计算一下训练集的mAP
+        val(model=yolo, val_data_generator=coco_data, classes=classes, desc='training dataset val')
+        # 这里计算验证集的mAP
+        mAP50, mAP, final_df = val(model=yolo, val_data_generator=val_coco_data, classes=classes, desc='val dataset val')
+        if mAP > pre_mAP:
+            pre_mAP = mAP
+            yolo.yolov5.save_weights(log_dir+"/yolov{}-best.h5".format(yolov5_type))
+            print("save {}/yolov{}-best.h5 best weight with {} mAP.".format(log_dir, yolov5_type, mAP))
+        yolo.yolov5.save_weights(log_dir+"/yolov{}-last.h5".format(yolov5_type))
+        print("save {}/yolov{}-last.h5 last weights at epoch {}.".format(log_dir, yolov5_type, epoch))
 
 
 if __name__ == "__main__":

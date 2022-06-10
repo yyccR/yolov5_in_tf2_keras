@@ -177,7 +177,7 @@ def val(model, val_data_generator, classes, desc='val'):
 def main():
     # model_path = "h5模型路径, 默认在 ./logs/yolov5-tf-300.h5"
     # model_path = "./logs_bn_momentum0.75/yolov5-tf-300.h5"
-    model_path = "./logs_adam_0.0005/yolov5s-best.h5"
+    model_path = "./logs_relu_adam_0.0001/yolov5s-best.h5"
     # image_path = "提供你要测试的图片路径"
     # image_path = "./data/tmp/traffic_road.jpg"
     # image_path = "./data/coco_2017_val_images/289343.jpg"

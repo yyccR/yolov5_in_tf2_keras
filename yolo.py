@@ -253,7 +253,6 @@ class Yolo:
             # Detections matrix [n, (x1, y1, x2, y2, conf, cls)]
             max_cls_ids = np.array(predict[:, 5:].argmax(axis=1), dtype=np.float32)
             max_cls_score = predict[:, 5:].max(axis=1)
-            print(np.max(max_cls_score), np.min(max_cls_score))
             predict = np.concatenate([box, max_cls_score[:, None], max_cls_ids[:, None]], axis=1)[
                 np.reshape(max_cls_score > 0.1, (-1,))]
 
@@ -272,7 +271,7 @@ class Yolo:
 
             output.append(predict[nms_ids.numpy()])
 
-        return np.array(output)
+        return output
 
     def build_graph(self):
         # inputs = tf.keras.layers.Input(shape=self.image_shape, batch_size=self.batch_size)
@@ -294,7 +293,7 @@ class Yolo:
         model = tf.keras.models.Model(inputs=inputs, outputs=outputs)
         return model
 
-    def predict(self, images):
+    def predict(self, images, image_need_resize=True, resize_to_origin=True):
         """预测
            预测模式下实例化类: is_training=False, weights_path=, batch_size跟随输入建议1, image_shape跟随训练模式,不做调整
         :param images: [batch, h, w, c] or [h, w, c]
@@ -307,16 +306,19 @@ class Yolo:
 
         final_outputs = []
         for i, im in enumerate(images):
-            im_shape = np.shape(im)
-            im_size_max = np.max(im_shape[0:2])
-            im_scale = float(self.image_shape[0]) / float(im_size_max)
+            if image_need_resize:
+                im_shape = np.shape(im)
+                im_size_max = np.max(im_shape[0:2])
+                im_scale = float(self.image_shape[0]) / float(im_size_max)
 
-            # resize原始图片
-            im_resize = cv2.resize(im, None, None, fx=im_scale, fy=im_scale, interpolation=cv2.INTER_LINEAR)
-            im_resize_shape = np.shape(im_resize)
-            im_blob = np.zeros(self.image_shape, dtype=np.float32)
-            im_blob[0:im_resize_shape[0], 0:im_resize_shape[1], :] = im_resize
-            inputs = np.array([im_blob], dtype=np.float32) / 255.
+                # resize原始图片
+                im_resize = cv2.resize(im, None, None, fx=im_scale, fy=im_scale, interpolation=cv2.INTER_LINEAR)
+                im_resize_shape = np.shape(im_resize)
+                im_blob = np.zeros(self.image_shape, dtype=np.float32)
+                im_blob[0:im_resize_shape[0], 0:im_resize_shape[1], :] = im_resize
+                inputs = np.array([im_blob], dtype=np.float32) / 255.
+            else:
+                inputs = np.array([im], dtype=np.float32) / 255.
 
             # 预测, [batch, -1, num_class + 5]
             # outputs = self.yolov5.predict(inputs)
@@ -334,20 +336,23 @@ class Yolo:
             # nms_outputs = self.nms(outputs.numpy(), iou_thres=0.3)[0]
             # print(np.max(outputs[:,:,4]),np.min(outputs[:,:,4]))
             nms_outputs = self.nms(outputs)
-            print(nms_outputs.shape)
-            # nms_outputs = self.nms(outputs)
-            if not nms_outputs.shape[0]:
+            # nms_outputs = self.nms(outputs.numpy())
+            # print(nms_outputs.shape)
+            # if not nms_outputs.shape[0]:
+            #     continue
+            if not nms_outputs:
                 continue
             nms_outputs = np.array(nms_outputs[0], dtype=np.float32)
 
             # resize回原图大小
-            boxes = nms_outputs[:, :4]
-            b0 = np.maximum(np.minimum(boxes[:, 0] / im_scale, im_shape[1] - 1), 0)
-            b1 = np.maximum(np.minimum(boxes[:, 1] / im_scale, im_shape[0] - 1), 0)
-            b2 = np.maximum(np.minimum(boxes[:, 2] / im_scale, im_shape[1] - 1), 0)
-            b3 = np.maximum(np.minimum(boxes[:, 3] / im_scale, im_shape[0] - 1), 0)
-            origin_boxes = np.stack([b0, b1, b2, b3], axis=1)
-            nms_outputs[:, :4] = origin_boxes
+            if resize_to_origin:
+                boxes = nms_outputs[:, :4]
+                b0 = np.maximum(np.minimum(boxes[:, 0] / im_scale, im_shape[1] - 1), 0)
+                b1 = np.maximum(np.minimum(boxes[:, 1] / im_scale, im_shape[0] - 1), 0)
+                b2 = np.maximum(np.minimum(boxes[:, 2] / im_scale, im_shape[1] - 1), 0)
+                b3 = np.maximum(np.minimum(boxes[:, 3] / im_scale, im_shape[0] - 1), 0)
+                origin_boxes = np.stack([b0, b1, b2, b3], axis=1)
+                nms_outputs[:, :4] = origin_boxes
 
             final_outputs.append(nms_outputs)
         final_outputs = np.array(final_outputs)
