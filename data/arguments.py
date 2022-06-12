@@ -7,7 +7,7 @@ import numpy as np
 class Arugments:
     def __init__(self,
                  image_shape=(640, 640, 3),
-                 hsv_h=0.015,
+                 hsv_h=0.2,
                  hsv_s=0.7,
                  hsv_v=0.4,
                  degrees=30.0,
@@ -108,7 +108,8 @@ class Arugments:
                 if new_boxes.shape[0]:
                     boxes4.append(new_boxes)
 
-        boxes4 = np.concatenate(boxes4, axis=0)
+        if boxes4:
+            boxes4 = np.concatenate(boxes4, axis=0)
         return img4, boxes4
 
     def random_perspective(self, im, boxes=(), border=(0, 0)):
@@ -160,8 +161,7 @@ class Arugments:
             xy = np.ones((n * 4, 3))
             xy[:, :2] = boxes[:, [0, 1, 2, 3, 0, 3, 2, 1]].reshape(n * 4, 2)  # x1y1, x2y2, x1y2, x2y1
             xy = xy @ M.T  # transform
-            xy = (xy[:, :2] / xy[:, 2:3] if self.perspective else xy[:, :2]).reshape(n,
-                                                                                     8)  # perspective rescale or affine
+            xy = (xy[:, :2] / xy[:, 2:3] if self.perspective else xy[:, :2]).reshape(n, 8)
             # create new boxes
             x = xy[:, [0, 2, 4, 6]]
             y = xy[:, [1, 3, 5, 7]]

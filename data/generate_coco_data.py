@@ -19,7 +19,7 @@ class CoCoDataGenrator:
                  train_img_nums=-1,
                  img_shape=(640, 640, 3),
                  batch_size=1,
-                 max_instances=100,
+                 max_instances=50,
                  using_argument=False,
                  include_crowd=False,
                  include_mask=False,
@@ -113,25 +113,27 @@ class CoCoDataGenrator:
             # {"img":, "bboxes":, "labels":, "masks":, "key_points":}
             data = self._data_generation(image_id=img_id)
             if len(np.shape(data['imgs'])) > 0:
-                batch_imgs.append(data['imgs'])
-                batch_labels.append(data['labels'])
-                batch_bboxes.append(data['bboxes'])
-                valid_nums.append(data['valid_nums'])
-                # if len(data['labels']) > self.max_instances:
-                #     batch_bboxes.append(data['bboxes'][:self.max_instances, :])
-                #     batch_labels.append(data['labels'][:self.max_instances])
-                #     valid_nums.append(self.max_instances)
-                # else:
-                #     pad_num = self.max_instances - len(data['labels'])
-                #     batch_bboxes.append(np.pad(data['bboxes'], [(0, pad_num), (0, 0)]))
-                #     batch_labels.append(np.pad(data['labels'], [(0, pad_num)]))
-                #     valid_nums.append(len(data['labels']))
+                if len(data['bboxes']) > 0:
+                    batch_imgs.append(data['imgs'])
+                    batch_labels.append(data['labels'])
+                    # print(np.shape(data['bboxes']))
+                    batch_bboxes.append(data['bboxes'])
+                    valid_nums.append(data['valid_nums'])
+                    # if len(data['labels']) > self.max_instances:
+                    #     batch_bboxes.append(data['bboxes'][:self.max_instances, :])
+                    #     batch_labels.append(data['labels'][:self.max_instances])
+                    #     valid_nums.append(self.max_instances)
+                    # else:
+                    #     pad_num = self.max_instances - len(data['labels'])
+                    #     batch_bboxes.append(np.pad(data['bboxes'], [(0, pad_num), (0, 0)]))
+                    #     batch_labels.append(np.pad(data['labels'], [(0, pad_num)]))
+                    #     valid_nums.append(len(data['labels']))
 
-                if self.include_mask:
-                    batch_masks.append(data['masks'])
+                    if self.include_mask:
+                        batch_masks.append(data['masks'])
 
-                if self.include_keypoint:
-                    batch_keypoints.append(data['keypoints'])
+                    if self.include_keypoint:
+                        batch_keypoints.append(data['keypoints'])
 
         self.current_batch_index += 1
 
@@ -344,6 +346,7 @@ class CoCoDataGenrator:
             # batch_bboxes.append(np.pad(data['bboxes'], [(0, pad_num), (0, 0)]))
             # batch_labels.append(np.pad(data['labels'], [(0, pad_num)]))
             # valid_nums.append(len(data['labels']))
+        # print(bboxes)
         labels = np.array(labels, dtype=np.int8)
         bboxes = np.array(bboxes, dtype=np.int16)
         img_resize, bboxes_resize = self._resize_im(origin_im=img, bboxes=bboxes)
@@ -393,7 +396,6 @@ class CoCoDataGenrator:
         outputs['masks'] = annotations['masks']
         outputs['keypoints'] = annotations['keypoints']
 
-
         if img.shape[0]:
             r = random.random()
             if r < 0.5:
@@ -405,26 +407,31 @@ class CoCoDataGenrator:
                     img_i = self._load_image(id)
                     if img_i.shape[0]:
                         input_images.append(img_i)
-                        annotations_i = self._load_annotations(image_id)
+                        annotations_i = self._load_annotations(id)
                         input_bboxes.append(
                             np.concatenate([annotations_i['bboxes'], annotations_i['labels'][:,None]], axis=-1)
                         )
                     else:
                         return outputs
                 new_img, new_bboxes = self.argument.random_mosaic(input_images, input_bboxes, self.img_shape[0])
-                new_labels = new_bboxes[:,-1]
-                outputs['imgs'] = new_img
-                outputs['labels'] = new_labels
-                outputs['bboxes'] = new_bboxes[:,:-1]
+                if len(new_bboxes)>0:
+                    new_labels = new_bboxes[:,-1]
+                    outputs['imgs'] = new_img
+                    outputs['labels'] = new_labels
+                    outputs['bboxes'] = new_bboxes[:,:-1]
 
-            elif r < 0.7:
+            elif r < 0.75:
                 # 平移/旋转/缩放/错切/透视变换
-                new_img, new_bboxes = self.argument.random_perspective(img, annotations['bboxes'])
+                input_bboxes = np.concatenate([annotations['bboxes'], annotations['labels'][:, None]], axis=-1)
+                new_img, new_bboxes = self.argument.random_perspective(img, input_bboxes)
                 # 曝光, 饱和, 亮度调整
                 new_img = self.argument.random_hsv(new_img)
-                outputs['imgs'] = new_img
-                outputs['bboxes'] = new_bboxes
-
+                if len(new_bboxes)>0:
+                    new_labels = new_bboxes[:, -1]
+                    outputs['imgs'] = new_img
+                    outputs['labels'] = new_labels
+                    outputs['bboxes'] = new_bboxes[:, :-1]
+            # print(r, outputs['bboxes'])
         return outputs
 
 
@@ -438,11 +445,11 @@ if __name__ == "__main__":
     # file = "./yanhua/annotations.json"
     coco = CoCoDataGenrator(
         coco_annotation_file=file,
-        train_img_nums=8,
+        train_img_nums=30,
         include_mask=True,
         include_keypoint=False,
         need_down_image=False,
-        batch_size=8,
+        batch_size=10,
         using_argument=True
     )
 
