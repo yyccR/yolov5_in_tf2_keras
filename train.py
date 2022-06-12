@@ -18,7 +18,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 def main():
     epochs = 300
-    log_dir = './logs_elu_adam_0.0001'
+    log_dir = './logs_arguments'
     # 可以选择 ['5l', '5s', '5m', '5x']
     yolov5_type = "5s"
     image_shape = (320, 320, 3)
@@ -59,11 +59,11 @@ def main():
         train_img_nums=train_img_nums,
         img_shape=image_shape,
         batch_size=batch_size,
-        max_instances=num_class,
         include_mask=False,
         include_crowd=False,
         include_keypoint=False,
-        need_down_image=False
+        need_down_image=False,
+        using_argument=True
     )
     # 验证集
     val_coco_data = CoCoDataGenrator(
@@ -73,11 +73,11 @@ def main():
         train_img_nums=-1,
         img_shape=image_shape,
         batch_size=batch_size,
-        max_instances=num_class,
         include_mask=False,
         include_crowd=False,
         include_keypoint=False,
-        need_down_image=False
+        need_down_image=False,
+        using_argument=False
     )
 
     yolo = Yolo(
