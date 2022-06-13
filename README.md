@@ -7,17 +7,35 @@
 
 ### 模型测试
 
-- 训练 COCO2017(val 5k)
+- 训练 [猫狗检测 3.7k](https://www.kaggle.com/datasets/andrewmvd/dog-and-cat-detection?resource=download)
   
-<img src="https://raw.githubusercontent.com/yyccR/Pictures/master/yolov5/yolov5_train.png" width="1000" height="500"/> 
+<img src="https://raw.githubusercontent.com/yyccR/Pictures/master/yolov5/yolov5_train_loss.png" width="1000" height="500"/> 
 
 - 检测效果
 
-<img src="https://raw.githubusercontent.com/yyccR/Pictures/master/yolov5/yolov5_sample1.png" width="350" height="230"/>  <img src="https://raw.githubusercontent.com/yyccR/Pictures/master/yolov5/yolov5_sample2.png" width="350" height="230"/>
+<img src="https://raw.githubusercontent.com/yyccR/Pictures/master/yolov5/yolov5_train_images.png" width="350" height="230"/>  
 
-<img src="https://raw.githubusercontent.com/yyccR/Pictures/master/yolov5/yolov5_sample3.png" width="350" height="230"/>  <img src="https://raw.githubusercontent.com/yyccR/Pictures/master/yolov5/yolov5_sample4.png" width="350" height="230"/>
+[comment]: <> (<img src="https://raw.githubusercontent.com/yyccR/Pictures/master/yolov5/yolov5_sample2.png" width="350" height="230"/>)
 
-- 精度/召回率
+[comment]: <> (<img src="https://raw.githubusercontent.com/yyccR/Pictures/master/yolov5/yolov5_sample3.png" width="350" height="230"/>  <img src="https://raw.githubusercontent.com/yyccR/Pictures/master/yolov5/yolov5_sample4.png" width="350" height="230"/>)
+
+- mAP@0.5/mAP@0.5:0.95/精度/召回率
+```python
+train epoch 284/299: 100%|██████████████████████████| 146/146 [01:29<00:00,  1.63it/s, loss=0.88708]
+training dataset val: 100%|███████████████████████████████████████| 146/146 [00:38<00:00,  3.77it/s]
+   class   mAP@0.5  mAP@0.5:0.95  precision    recall
+0    cat  0.886272      0.544572   0.376286  0.922149
+1    dog  0.920848      0.522949   0.481021  0.944245
+2  total  0.903560      0.533760   0.428654  0.933197
+val dataset val: 100%|██████████████████████████████████████████████| 38/38 [00:06<00:00,  5.94it/s]
+   class   mAP@0.5  mAP@0.5:0.95  precision    recall
+0    cat  0.905156      0.584378   0.682848  0.886555
+1    dog  0.940633      0.513005   0.724036  0.934866
+2  total  0.922895      0.548692   0.703442  0.910710
+save ./logs/yolov5s-best.h5 best weight with 0.548691646029708 mAP.
+save ./logs/yolov5s-last.h5 last weights at epoch 284.
+
+```
 
 ### Requirements
 
