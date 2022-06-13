@@ -17,6 +17,7 @@
 
 <img src="https://raw.githubusercontent.com/yyccR/Pictures/master/yolov5/yolov5_train_images3.png" width="350" height="230"/>  <img src="https://raw.githubusercontent.com/yyccR/Pictures/master/yolov5/yolov5_train_images4.png" width="350" height="230"/>
 
+
 - mAP@0.5/mAP@0.5:0.95/精度/召回率
 ```python
 train epoch 284/299: 100%|██████████████████████████| 146/146 [01:29<00:00,  1.63it/s, loss=0.88708]
@@ -42,6 +43,12 @@ pip3 install -r requirements.txt
 ```
 
 ### Get start
+0. 下载数据集
+```python
+https://www.kaggle.com/datasets/andrewmvd/dog-and-cat-detection/download
+
+解压数据将images目录修改为JPEGImages, 放到 ./data/cat_dog_face_data下
+```
 
 1. 训练
 ```python
@@ -63,6 +70,11 @@ http://127.0.0.1:8053
 python3 detect.py
 ```
 
+5. 评估验证
+```python
+python3 val.py
+```
+
 ### 训练自己的数据
 
 1. [labelme](https://github.com/wkentaro/labelme)打标自己的数据
@@ -73,6 +85,5 @@ output_dir = '这里写要转CoCo格式的目录，建议建一个空目录'
 labels = "这里是你打标时所有的类别名, txt文本即可, 每行一个类, 类名无需加引号"
 ```
 3. 执行`data/labelme2coco.py`脚本会在`output_dir`生成对应的json文件和图片
-4. 修改`train.py`文件中`coco_annotation_file`以及`num_class`, 
-   注意`classes`通过`CoCoDataGenrator(*).coco.cats[label_id]['name']`可获得，由于coco中类别不连续，所以通过coco.cats拿到的数组下标拿到的类别可能不准.
+4. 修改`train.py`文件中`train_coco_json`, `val_coco_json`, `num_class`, `classes`
 5. 开始训练, `python3 train.py`
