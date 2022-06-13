@@ -13,11 +13,9 @@
 
 - 检测效果
 
-<img src="https://raw.githubusercontent.com/yyccR/Pictures/master/yolov5/yolov5_train_images.png" width="350" height="230"/>  
+<img src="https://raw.githubusercontent.com/yyccR/Pictures/master/yolov5/yolov5_train_images.png" width="350" height="230"/> (<img src="https://raw.githubusercontent.com/yyccR/Pictures/master/yolov5/yolov5_train_images2.png" width="350" height="230"/>)
 
-[comment]: <> (<img src="https://raw.githubusercontent.com/yyccR/Pictures/master/yolov5/yolov5_sample2.png" width="350" height="230"/>)
-
-[comment]: <> (<img src="https://raw.githubusercontent.com/yyccR/Pictures/master/yolov5/yolov5_sample3.png" width="350" height="230"/>  <img src="https://raw.githubusercontent.com/yyccR/Pictures/master/yolov5/yolov5_sample4.png" width="350" height="230"/>)
+<img src="https://raw.githubusercontent.com/yyccR/Pictures/master/yolov5/yolov5_train_images3.png" width="350" height="230"/>  <img src="https://raw.githubusercontent.com/yyccR/Pictures/master/yolov5/yolov5_train_images4.png" width="350" height="230"/>
 
 - mAP@0.5/mAP@0.5:0.95/精度/召回率
 ```python
