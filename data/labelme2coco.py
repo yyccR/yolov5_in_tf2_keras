@@ -1,15 +1,13 @@
 #!/usr/bin/env python
 
-import argparse
-import collections
-import datetime
 import glob
 import json
-import os
-import cv2
-import os.path as osp
 import sys
 import uuid
+import random
+import datetime
+import collections
+import os.path as osp
 
 import imgviz
 import numpy as np
@@ -23,121 +21,97 @@ except ImportError:
     sys.exit(1)
 
 
-def main():
-    input_dir = ''
-    output_dir = ''
-    labels = ''
-    noviz = False
+def labelme2coco(input_dir='', output_dir='', labels=[], train_val_split=0.8, noviz=False):
 
-    now = datetime.datetime.now()
+    train_out_ann_file = osp.join(output_dir, "train_annotations.json")
+    val_out_ann_file = osp.join(output_dir, "val_annotations.json")
+    label_files = glob.glob(osp.join(input_dir, "*.json"))
 
-    data = dict(
-        info=dict(
-            description=None,
-            url=None,
-            version=None,
-            year=now.year,
-            contributor=None,
-            date_created=now.strftime("%Y-%m-%d %H:%M:%S.%f"),
-        ),
-        licenses=[dict(url=None, id=0, name=None,)],
-        images=[
-            # license, url, file_name, height, width, date_captured, id
-        ],
-        annotations=[
-            # segmentation, area, iscrowd, image_id, bbox, category_id, id
-        ],
-        categories=[
-            # supercategory, id, name
-        ],
-    )
+    train_dict = {"images": [], "annotations": [], "categories": []}
+    val_dict = {"images": [], "annotations": [], "categories": []}
 
     class_name_to_id = {}
-    for i, line in enumerate(open(labels).readlines()):
+    for i, label in enumerate(labels):
         class_id = i
-        class_name = line.strip()
-        # if class_id == -1:
-        #     assert class_name == "_background_"
-        #     continue
+        class_name = label
         class_name_to_id[class_name] = class_id
-        data["categories"].append(
-            dict(supercategory=None, id=class_id, name=class_name,)
+        train_dict["categories"].append(
+            dict(supercategory=None, id=class_id, name=class_name)
+        )
+        val_dict["categories"].append(
+            dict(supercategory=None, id=class_id, name=class_name)
         )
 
-    out_ann_file = osp.join(output_dir, "annotations.json")
-    label_files = glob.glob(osp.join(input_dir, "*.json"))
     for image_id, filename in enumerate(label_files):
         print("Generating dataset from:", filename)
 
         label_file = labelme.LabelFile(filename=filename)
-
         base = osp.splitext(osp.basename(filename))[0]
         out_img_file = osp.join(output_dir, "JPEGImages", base + ".jpg")
 
+        # 保存图片到对应目录
         img = labelme.utils.img_data_to_arr(label_file.imageData)
         imgviz.io.imsave(out_img_file, img)
-        data["images"].append(
+
+        if random.random() < train_val_split:
+            json_dict = train_dict
+        else:
+            json_dict = val_dict
+
+        json_dict["images"].append(
             dict(
-                license=0,
-                url=None,
-                file_name=osp.relpath(out_img_file, osp.dirname(out_ann_file)),
-                # file_name=out_img_file,
+                file_name=osp.relpath(out_img_file, osp.dirname(train_out_ann_file)),
                 height=img.shape[0],
                 width=img.shape[1],
-                date_captured=None,
                 id=image_id,
             )
         )
 
-        masks = {}  # for area
-        segmentations = collections.defaultdict(list)  # for segmentation
+        masks = {}
+        segments = collections.defaultdict(list)
         for shape in label_file.shapes:
+
             points = shape["points"]
             label = shape["label"]
             group_id = shape.get("group_id")
             shape_type = shape.get("shape_type", "polygon")
+
+            if group_id is None:
+                group_id = uuid.uuid1()
+            instance = (label, group_id)
+
             if shape_type == "polygon":
                 mask = labelme.utils.shape_to_mask(
                     img.shape[:2], points, shape_type
                 )
-                # cv2.imshow("",np.array(mask, dtype=np.uint8)*255)
-                # cv2.waitKey(0)
 
-                if group_id is None:
-                    group_id = uuid.uuid1()
-
-                instance = (label, group_id)
-                # print(instance)
-
+                # 此处是为了保证那些 由于被遮挡而分开成多部分标记的 目标
                 if instance in masks:
                     masks[instance] = masks[instance] | mask
                 else:
                     masks[instance] = mask
                 # print(masks[instance].shape)
+                segments[instance].append(points)
 
-            if shape_type == "rectangle":
+            elif shape_type == "rectangle":
                 (x1, y1), (x2, y2) = points
-                x1, x2 = sorted([x1, x2])
-                y1, y2 = sorted([y1, y2])
-                points = [x1, y1, x2, y1, x2, y2, x1, y2]
-            if shape_type == "circle":
-                (x1, y1), (x2, y2) = points
-                r = np.linalg.norm([x2 - x1, y2 - y1])
-                # r(1-cos(a/2))<x, a=2*pi/N => N>pi/arccos(1-x/r)
-                # x: tolerance of the gap between the arc and the line segment
-                n_points_circle = max(int(np.pi / np.arccos(1 - 1 / r)), 12)
-                i = np.arange(n_points_circle)
-                x = x1 + r * np.sin(2 * np.pi / n_points_circle * i)
-                y = y1 + r * np.cos(2 * np.pi / n_points_circle * i)
-                points = np.stack((x, y), axis=1).flatten().tolist()
-            else:
-                points = np.asarray(points).flatten().tolist()
-
-            segmentations[instance].append(points)
-            print(segmentations[instance])
-
-        segmentations = dict(segmentations)
-
+                o_width = abs(x2 - x1)
+                o_height = abs(y2 - y1)
+                if label not in class_name_to_id:
+                    continue
+                cls_id = class_name_to_id[label]
+                json_dict["annotations"].append(
+                    dict(
+                        id=len(json_dict["annotations"]),
+                        image_id=image_id,
+                        category_id=cls_id,
+                        segmentation=[],
+                        area=o_width * o_height,
+                        bbox=[x1, y1, o_width, o_height],
+                        iscrowd=0,
+                    )
+                )
+        segments = dict(segments)
         for instance, mask in masks.items():
             cls_name, group_id = instance
             if cls_name not in class_name_to_id:
@@ -149,12 +123,12 @@ def main():
             area = float(pycocotools.mask.area(mask))
             bbox = pycocotools.mask.toBbox(mask).flatten().tolist()
 
-            data["annotations"].append(
+            json_dict["annotations"].append(
                 dict(
-                    id=len(data["annotations"]),
+                    id=len(json_dict["annotations"]),
                     image_id=image_id,
                     category_id=cls_id,
-                    segmentation=segmentations[instance],
+                    segmentation=segments[instance],
                     area=area,
                     bbox=bbox,
                     iscrowd=0,
@@ -184,9 +158,17 @@ def main():
             )
             imgviz.io.imsave(out_viz_file, viz)
 
-    with open(out_ann_file, "w") as f:
-        json.dump(data, f)
+    with open(train_out_ann_file, "w") as f:
+        json.dump(train_dict, f)
+    with open(val_out_ann_file, "w") as f:
+        json.dump(val_dict, f)
 
 
 if __name__ == "__main__":
-    main()
+    labelme2coco(
+        input_dir='../../cat_dog_face_data/labels',
+        output_dir='../../cat_dog_face_data/coco_labels',
+        labels=['head'],
+        train_val_split=0.8,
+        noviz=True
+    )

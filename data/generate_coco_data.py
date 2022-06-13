@@ -1,6 +1,6 @@
 import sys
 
-sys.path.append("../../detector_in_keras")
+sys.path.append("../../yolov5_in_tf2_keras")
 
 import os
 import cv2
