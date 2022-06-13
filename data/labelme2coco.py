@@ -21,7 +21,7 @@ except ImportError:
     sys.exit(1)
 
 
-def labelme2coco(input_dir='', output_dir='', labels=[], train_val_split=0.8, noviz=False):
+def labelme2coco(input_dir='', output_dir='', labels=[], train_val_split=0.8):
 
     train_out_ann_file = osp.join(output_dir, "train_annotations.json")
     val_out_ann_file = osp.join(output_dir, "val_annotations.json")
@@ -135,29 +135,6 @@ def labelme2coco(input_dir='', output_dir='', labels=[], train_val_split=0.8, no
                 )
             )
 
-        if not noviz:
-            viz = img
-            if masks:
-                labels, captions, masks = zip(
-                    *[
-                        (class_name_to_id[cnm], cnm, msk)
-                        for (cnm, gid), msk in masks.items()
-                        if cnm in class_name_to_id
-                    ]
-                )
-                viz = imgviz.instances2rgb(
-                    image=img,
-                    labels=labels,
-                    masks=masks,
-                    captions=captions,
-                    font_size=15,
-                    line_width=2,
-                )
-            out_viz_file = osp.join(
-                output_dir, "Visualization", base + ".jpg"
-            )
-            imgviz.io.imsave(out_viz_file, viz)
-
     with open(train_out_ann_file, "w") as f:
         json.dump(train_dict, f)
     with open(val_out_ann_file, "w") as f:
@@ -169,6 +146,5 @@ if __name__ == "__main__":
         input_dir='../../cat_dog_face_data/labels',
         output_dir='../../cat_dog_face_data/coco_labels',
         labels=['head'],
-        train_val_split=0.8,
-        noviz=True
+        train_val_split=0.8
     )
