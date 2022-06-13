@@ -17,12 +17,12 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "1"
 def main():
     # model_path = "h5模型路径, 默认在 ./logs/yolov5-tf-300.h5"
     # model_path = "./logs_bn_momentum0.75/yolov5-tf-300.h5"
-    model_path = "./logs_relu_adam_0.0001/yolov5s-best.h5"
+    model_path = "./logs/yolov5s-best.h5"
     # image_path = "提供你要测试的图片路径"
     # image_path = "./data/tmp/traffic_road.jpg"
     # image_path = "./data/coco_2017_val_images/289343.jpg"
     # image_path = "./data/cat_dog_face_data/JPEGImages/Cats_Test849.jpg"
-    image_path = "./data/cat_dog_face_data/JPEGImages/Cats_Test1854.jpg"
+    image_path = "./data/cat_dog_face_data/JPEGImages/Cats_Test360.jpg"
     image = cv2.imread(image_path)
     # 可以选择 ['5l', '5s', '5m', '5x'], 跟随训练
     yolov5_type = "5s"

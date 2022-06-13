@@ -114,17 +114,6 @@ def val(model, val_data_generator, classes, desc='val'):
         else:
             predictions = model.predict(gt_imgs, image_need_resize=False, resize_to_origin=False)
 
-        # if predictions.shape[0]:
-        #     pred_image = gt_imgs[0].copy()
-        #     for box_obj_cls in predictions[0]:
-        #         if box_obj_cls[4] > 0.5:
-        #             label = int(box_obj_cls[5])
-        #             class_name = gt_classes[0][label]
-        #             xmin, ymin, xmax, ymax = box_obj_cls[:4]
-        #             pred_image = draw_bounding_box(pred_image, class_name, box_obj_cls[4], int(xmin), int(ymin),
-        #                                            int(xmax), int(ymax))
-        #     cv2.imwrite("./data/tmp/predicts.jpg", pred_image)
-
         for i, prediction in enumerate(predictions):
             if prediction.shape[0]:
                 gt_class = gt_classes[i, :valid_nums[i]]
@@ -176,13 +165,11 @@ def val(model, val_data_generator, classes, desc='val'):
 
 def main():
     # model_path = "h5模型路径, 默认在 ./logs/yolov5-tf-300.h5"
-    # model_path = "./logs_bn_momentum0.75/yolov5-tf-300.h5"
-    model_path = "./logs_relu_adam_0.0001/yolov5s-best.h5"
+    model_path = "./logs/yolov5s-best.h5"
     # image_path = "提供你要测试的图片路径"
-    # image_path = "./data/tmp/traffic_road.jpg"
-    # image_path = "./data/coco_2017_val_images/289343.jpg"
     # image_path = "./data/tmp/Cats_Test49.jpg"
     # image = cv2.imread(image_path)
+    val_dataset = './data/cat_dog_face_data/val_annotations.json'
     # 可以选择 ['5l', '5s', '5m', '5x'], 跟随训练
     yolov5_type = "5s"
     # image_shape = (640, 640, 3)
@@ -200,8 +187,7 @@ def main():
     anchor_masks = np.array([[0, 1, 2], [3, 4, 5], [6, 7, 8]], dtype=np.int8)
     # data generator
     val_coco_data = CoCoDataGenrator(
-        # coco_annotation_file='./data/instances_val2017.json',
-        coco_annotation_file='./data/cat_dog_face_data/val_annotations.json',
+        coco_annotation_file=val_dataset,
         train_img_nums=-1,
         img_shape=image_shape,
         batch_size=batch_size,
@@ -236,7 +222,7 @@ def main():
     )
     yolo.yolov5.summary(line_length=100)
 
-    ap, mAP50, mAP = val(model=yolo, val_data_generator=val_coco_data, classes=classes)
+    mAP50, mAP, metrics = val(model=yolo, val_data_generator=val_coco_data, classes=classes)
 
 
 if __name__ == "__main__":

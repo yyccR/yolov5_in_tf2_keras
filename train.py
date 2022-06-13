@@ -18,7 +18,7 @@ os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
 def main():
     epochs = 300
-    log_dir = './logs_arguments'
+    log_dir = './logs'
     # 可以选择 ['5l', '5s', '5m', '5x']
     yolov5_type = "5s"
     image_shape = (320, 320, 3)
@@ -27,6 +27,8 @@ def main():
     batch_size = 20
     # -1表示全部数据参与训练
     train_img_nums = -1
+    train_coco_json = './data/cat_dog_face_data/train_annotations.json'
+    val_coco_json = './data/cat_dog_face_data/val_annotations.json'
 
     # 类别名, 也可以自己提供一个数组, 不通过coco
     # classes = ['none', 'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
@@ -53,9 +55,7 @@ def main():
     summary_writer = tf.summary.create_file_writer(log_dir)
     # data generator
     coco_data = CoCoDataGenrator(
-        coco_annotation_file='./data/cat_dog_face_data/train_annotations.json',
-        # coco_annotation_file='./data/instances_val2017.json',
-        # coco_annotation_file='./data/tmp/annotations.json',
+        coco_annotation_file= train_coco_json,
         train_img_nums=train_img_nums,
         img_shape=image_shape,
         batch_size=batch_size,
@@ -67,9 +67,7 @@ def main():
     )
     # 验证集
     val_coco_data = CoCoDataGenrator(
-        coco_annotation_file='./data/cat_dog_face_data/val_annotations.json',
-        # coco_annotation_file='./data/instances_val2017.json',
-        # coco_annotation_file='./data/tmp/annotations.json',
+        coco_annotation_file=val_coco_json,
         train_img_nums=-1,
         img_shape=image_shape,
         batch_size=batch_size,
@@ -91,9 +89,6 @@ def main():
     )
     yolo.yolov5.summary(line_length=200)
     optimizer = tf.keras.optimizers.Adam(learning_rate=0.0001)
-    # optimizer = tf.keras.optimizers.SGD(learning_rate=0.01)
-    # optimizer = tf.keras.optimizers.Adadelta()
-    # optimizer = tf.keras.optimizers.Nadam()
 
     loss_fn = ComputeLoss(
         image_shape=image_shape,
@@ -135,15 +130,9 @@ def main():
 
                 grad = tape.gradient(total_loss, yolo.yolov5.trainable_variables)
                 optimizer.apply_gradients(zip(grad, yolo.yolov5.trainable_variables))
-                # print("-------epoch {}---batch {}--------------".format(epoch, batch))
-                # print("loss_box:{}, loss_obj:{}, loss_cls:{}".format(loss_box, loss_obj, loss_cls))
 
                 # Scalar
                 with summary_writer.as_default():
-                    # tf.summary.scalar('loss/xy_loss', loss_xy,
-                    #                   step=epoch * coco_data.total_batch_size + batch)
-                    # tf.summary.scalar('loss/wh_loss', loss_wh,
-                    #                   step=epoch * coco_data.total_batch_size + batch)
                     tf.summary.scalar('loss/box_loss', loss_box,
                                       step=epoch * coco_data.total_batch_size + batch)
                     tf.summary.scalar('loss/object_loss', loss_obj,
