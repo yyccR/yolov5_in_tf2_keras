@@ -46,6 +46,8 @@ pip3 install -r requirements.txt
 0. 下载数据集
 ```python
 https://www.kaggle.com/datasets/andrewmvd/dog-and-cat-detection/download
+或者从releasev1.0下载:
+https://github.com/yyccR/yolov5_in_tf2_keras/releases/download/v1.0/JPEGImages.zip
 
 解压数据将images目录修改为JPEGImages, 放到 ./data/cat_dog_face_data下
 ```
