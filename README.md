@@ -17,6 +17,10 @@
 
 <img src="https://raw.githubusercontent.com/yyccR/Pictures/master/yolov5/yolov5_train_images3.png" width="350" height="230"/>  <img src="https://raw.githubusercontent.com/yyccR/Pictures/master/yolov5/yolov5_train_images4.png" width="350" height="230"/>
 
+- `TFLite` Android 测试效果：
+  
+<img src="https://user-images.githubusercontent.com/14156500/175484983-899da03f-5e3f-484a-aec8-383204c58921.png" width="200"/>
+
 
 - mAP@0.5/mAP@0.5:0.95/精度/召回率
 
@@ -66,6 +70,11 @@ python3 detect.py
 5. 评估验证
 ```python
 python3 val.py
+```
+
+6. 导出`TFLite`格式
+```python
+python3 ./data/h5_to_tfite.py
 ```
 
 ### 训练自己的数据
