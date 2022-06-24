@@ -1,5 +1,6 @@
 import torch
 import torch.nn as nn
+import numpy as np
 import math
 import tensorflow as tf
 
@@ -46,9 +47,11 @@ class Conv(tf.keras.layers.Layer):
         # self.leak_relu = tf.keras.layers.LeakyReLU()
         # self.elu = tf.keras.layers.ELU()
 
+
     def call(self, inputs, *args, **kwargs):
         x = self.conv(inputs)
-        x = self.bn(x, training=False)
+        # x = self.bn(x, training=False)
+        x = self.bn(x)
         if self.act:
             # x = tf.keras.activations.swish(x)
             x = self.relu(x)
@@ -678,3 +681,120 @@ class Concat(tf.keras.layers.Layer):
 #
 #     def call(self, inputs, *args, **kwargs):
 #         pass
+
+
+class YoloHead(tf.keras.layers.Layer):
+    def __init__(self, image_shape, num_class, is_training, strides, anchors, anchors_masks):
+        super(YoloHead, self).__init__()
+        self.image_shape = image_shape
+        self.num_class = num_class
+        self.is_training = is_training
+        self.strides = strides
+        self.anchors = anchors
+        self.anchors_masks = anchors_masks
+        self.grid = []
+        self.anchor_grid = []
+        for i, stride in enumerate(strides):
+            grid, anchor_grid = self._make_grid(self.image_shape[0] // stride, self.image_shape[1] // stride, i)
+            self.grid.append(grid)
+            self.anchor_grid.append(anchor_grid)
+
+    def call(self, inputs, *args, **kwargs):
+        detect_res = []
+        for i, pred in enumerate(inputs):
+            if not self.is_training:
+                pred = tf.sigmoid(pred)
+                f_shape = pred.get_shape()
+                # if len(self.grid) < self.anchor_masks.shape[0]:
+                #     grid, anchor_grid = self._make_grid(f_shape[1], f_shape[2], i)
+                #     self.grid.append(grid)
+                #     self.anchor_grid.append(anchor_grid)
+                # 这里把输出的值域从[0,1]调整到[0, image_shape]
+                # pred_xy = (tf.sigmoid(pred[..., 0:2]) * 2. - 0.5 + self.grid[i]) * self.strides[i]
+                pred_xy = (pred[..., 0:2] * 2. - 0.5 + self.grid[i]) * self.strides[i]
+                # pred_wh = (tf.sigmoid(pred[..., 2:4]) * 2) ** 2 * self.anchor_grid[i]
+                pred_wh = (pred[..., 2:4] * 2) * (pred[..., 2:4] * 2) * self.anchor_grid[i]
+                # print(self.grid)
+                pred_obj = pred[..., 4:5]
+                # pred_cls = tf.keras.layers.Softmax()(pred[..., 5:])
+                pred_cls = pred[..., 5:]
+                cur_layer_pred_res = tf.keras.layers.Concatenate(axis=-1)([pred_xy, pred_wh, pred_obj, pred_cls])
+
+                # cur_layer_pred_res = tf.reshape(cur_layer_pred_res, [self.batch_size, -1, self.num_class + 5])
+                cur_layer_pred_res = tf.keras.layers.Reshape([f_shape[1]*f_shape[2]*f_shape[3], self.num_class + 5])(cur_layer_pred_res)
+                detect_res.append(cur_layer_pred_res)
+            else:
+                detect_res.append(pred)
+        return detect_res if self.is_training else tf.concat(detect_res, axis=1)
+
+    def _make_grid(self, h, w, i):
+        cur_layer_anchors = self.anchors[self.anchors_masks[i]] * np.array([[self.image_shape[1], self.image_shape[0]]])
+        num_anchors_per_layer = len(cur_layer_anchors)
+        yv, xv = tf.meshgrid(tf.range(h), tf.range(w))
+        grid = tf.stack((xv, yv), axis=2)
+        # 用来计算中心点的grid cell左上角坐标
+        grid = tf.tile(tf.reshape(grid, [1, h, w, 1, 2]), [1, 1, 1, num_anchors_per_layer, 1])
+        grid = tf.cast(grid, tf.float32)
+        # anchor_grid = tf.reshape(cur_layer_anchors * self.strides[i], [1, 1, 1, num_anchors_per_layer, 2])
+        anchor_grid = tf.reshape(cur_layer_anchors, [1, 1, 1, num_anchors_per_layer, 2])
+        # 用来计算宽高的anchor w/h
+        anchor_grid = tf.tile(anchor_grid, [1, h, w, 1, 1])
+        anchor_grid = tf.cast(anchor_grid, tf.float32)
+
+        return grid, anchor_grid
+
+
+def nms(image_shape, predicts, conf_thres=0.45, iou_thres=0.2, max_det=300, max_nms=3000):
+    """ 原yolov5简化版nms, 不用multi label, 不做merge box
+    :param image_shape:
+    :param predicts:
+    :param conf_thres:
+    :param iou_thres:
+    :param max_det:
+    :return: [batch, nms_nums, (x1, y1, x2, y2, conf, cls)]
+    """
+    output = []
+
+    # 这里遍历每个batch,也就是每张图, 输出的3层预测已经做了合并处理成[batch, -1, 5+num_class]
+    for i, predict in enumerate(predicts):
+        # predict = predict.numpy()
+        # 首先只要那些目标概率大于阈值的
+        obj_mask = predict[..., 4] > conf_thres
+        predict = predict[obj_mask]
+
+        # 没有满足的数据则跳过去下一张
+        if not predict.shape[0]:
+            continue
+
+        # 类别概率乘上了目标概率, 作为最终判别概率
+        # print(np.max(predict[:, 5:]), np.min(predict[:, 5:]))
+        # print(np.max(predict[:, 4:5]), np.min(predict[:, 4:5]))
+        predict[:, 5:] *= predict[:, 4:5]
+
+        x1 = np.maximum(predict[:, 0] - predict[:, 2] / 2, 0)
+        y1 = np.maximum(predict[:, 1] - predict[:, 3] / 2, 0)
+        x2 = np.minimum(predict[:, 0] + predict[:, 2] / 2, image_shape[1])
+        y2 = np.minimum(predict[:, 1] + predict[:, 3] / 2, image_shape[0])
+        box = np.concatenate([x1[:, None], y1[:, None], x2[:, None], y2[:, None]], axis=-1)
+        # Detections matrix [n, (x1, y1, x2, y2, conf, cls)]
+        max_cls_ids = np.array(predict[:, 5:].argmax(axis=1), dtype=np.float32)
+        max_cls_score = predict[:, 5:].max(axis=1)
+        predict = np.concatenate([box, max_cls_score[:, None], max_cls_ids[:, None]], axis=1)[
+            np.reshape(max_cls_score > 0.1, (-1,))]
+
+        n = predict.shape[0]
+        if not n:
+            continue
+        elif n > max_nms:
+            predict = predict[predict[:, 4].argsort()[::-1][:max_nms]]
+
+        # 为每个类别乘上一个大数,box再加上这个偏移, 做nms时就可以在类内做
+        cls = predict[:, 5:6] * 4096
+        # 边框加偏移
+        boxes, scores = predict[:, :4] + cls, predict[:, 4]
+        nms_ids = tf.image.non_max_suppression(
+            boxes=boxes, scores=scores, max_output_size=max_det, iou_threshold=iou_thres)
+
+        output.append(predict[nms_ids.numpy()])
+
+    return output
