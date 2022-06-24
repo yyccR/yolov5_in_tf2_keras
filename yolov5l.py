@@ -83,7 +83,7 @@ class Yolov5l:
                  p9: [batch, h/32, w/32, anchors, num_class+5]
         """
         # inputs = tf.keras.Input(shape=self.image_shape, batch_size=self.batch_size)
-        inputs = tf.keras.Input(shape=self.image_shape)
+        inputs = tf.keras.Input(shape=self.image_shape, batch_size=self.batch_size)
         # backbone
         x = Conv(out_channels=64, kernel_size=6, stride=2, padding='same')(inputs)
         # 1/4
