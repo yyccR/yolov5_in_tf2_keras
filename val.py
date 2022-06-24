@@ -7,6 +7,7 @@ import pandas as pd
 from yolo import Yolo
 import tensorflow as tf
 from data.generate_coco_data import CoCoDataGenrator
+from layers import nms
 from data.visual_ops import draw_bounding_box
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
@@ -110,7 +111,7 @@ def val(model, val_data_generator, classes, desc='val'):
             # predictions = model.yolov5(gt_imgs / 255., training=True)
             predictions = model.yolov5.predict(gt_imgs / 255.)
             predictions = model.yolo_head(predictions, is_training=False)
-            predictions = model.nms(predictions.numpy())
+            predictions = nms(model.image_shape, predictions.numpy())
         else:
             predictions = model.predict(gt_imgs, image_need_resize=False, resize_to_origin=False)
 

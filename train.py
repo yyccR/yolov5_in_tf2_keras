@@ -12,6 +12,7 @@ from data.generate_coco_data import CoCoDataGenrator
 from yolo import Yolo
 from loss import ComputeLoss
 from val import val
+from layers import nms
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "0"
 
@@ -159,7 +160,7 @@ def main():
                 # pred, 同样只拿第一个batch的pred
                 pred_img = gt_imgs[random_one].copy() * 255
                 yolo_head_output = yolo.yolo_head(yolo_preds, is_training=False)
-                nms_output = yolo.nms(yolo_head_output.numpy(), iou_thres=0.3)
+                nms_output = nms(image_shape, yolo_head_output.numpy(), iou_thres=0.3)
                 if len(nms_output) == batch_size:
                     nms_output = nms_output[random_one]
                     for box_obj_cls in nms_output:
