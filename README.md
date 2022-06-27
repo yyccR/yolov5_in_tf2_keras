@@ -73,7 +73,14 @@ python3 val.py
 
 6. 导出`TFLite`格式
 ```python
-python3 ./data/h5_to_tfite.py
+cd ./data
+python3 ./h5_to_tfite.py
+```
+
+7. 导出`ONNX`格式
+```python
+cd ./data
+python3 ./h5_to_onnx.py
 ```
 
 ### 训练自己的数据

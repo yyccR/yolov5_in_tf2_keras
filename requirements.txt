@@ -7,6 +7,9 @@ pycocotools == 2.0.2
 scikit-image == 0.18.2
 Pillow >= 7.1.2
 xmltodict == 0.12.0
+tf2onnx
+onnxruntime
+onnx-simplifier
 
 
 
