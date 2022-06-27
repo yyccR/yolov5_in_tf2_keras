@@ -12,7 +12,7 @@ import onnxsim
 import onnxruntime
 
 from yolo import Yolo
-from layers import nms, YoloHead
+from layers import nms
 from data.visual_ops import draw_bounding_box
 
 os.environ["CUDA_VISIBLE_DEVICES"] = "1"
