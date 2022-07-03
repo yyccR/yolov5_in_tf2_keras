@@ -4,6 +4,8 @@
 - [Bilibili视频讲解地址: 《yolov5 解读,训练,复现》](https://www.bilibili.com/video/BV1JR4y1g77H/)
 - [Bilibili视频讲解PPT文件: yolov5_bilibili_talk_ppt.pdf](./yolov5_bilibili_talk_ppt.pdf)
 - [Bilibili视频讲解PPT文件: yolov5_bilibili_talk_ppt.pdf (gitee链接)](https://gitee.com/yyccR/yolov5_in_tf2_keras/blob/master/yolov5_bilibili_talk_ppt.pdf)
+- [yolov5 tflite android 部署](https://github.com/yyccR/yolov5-tflite-android)
+- [yolov5 ncnn android 部署](https://github.com/yyccR/yolov5-ncnn-android)
 
 ### 模型测试
 
